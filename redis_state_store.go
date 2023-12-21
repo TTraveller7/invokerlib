@@ -9,23 +9,21 @@ import (
 
 type RedisStateStore struct {
 	StateStore
-	conf *RedisStateStoreConf
+	conf *RedisStateStoreConfig
 	cli  *redis.Client
 }
 
-type RedisStateStoreConf struct {
-	IsGlobal bool
-}
-
-func NewRedisStateStore(conf *RedisStateStoreConf) (StateStore, error) {
-	addr := "localhost:6379"
-	if conf.IsGlobal {
-		// TODO
-		addr = "GLOBAL_ADDRESS"
+func NewRedisStateStore() (StateStore, error) {
+	if conf == nil {
+		return nil, ErrConfigNotInitialized
+	}
+	if conf.RedisConf == nil {
+		return nil, ErrRedisConfNotInitialized
 	}
 
+	redisConf := conf.RedisConf
 	cli := redis.NewClient(&redis.Options{
-		Addr:     addr,
+		Addr:     redisConf.Address,
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -33,7 +31,7 @@ func NewRedisStateStore(conf *RedisStateStoreConf) (StateStore, error) {
 		return nil, err
 	}
 	return &RedisStateStore{
-		conf: conf,
+		conf: redisConf,
 		cli:  cli,
 	}, nil
 }
