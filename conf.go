@@ -2,8 +2,8 @@ package invokerlib
 
 type Config struct {
 	// TOOD: this shld be in global config
-	KafkaSrc   *KafkaConfig
-	KafkaDests map[string]*KafkaConfig
+	KafkaSrc                *KafkaConfig
+	FunctionNameToKafkaDest map[string]*KafkaConfig
 
 	NumOfWorker int
 

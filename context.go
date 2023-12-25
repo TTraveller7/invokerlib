@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func PrependWorkerId(ctx context.Context, s string) string {
+func prependWorkerId(ctx context.Context, s string) string {
 	return fmt.Sprintf("%v_%s", ctx.Value(CTX_KEY_INVOKER_LIB_WORKER_ID), s)
 }
 
