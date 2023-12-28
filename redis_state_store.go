@@ -9,31 +9,12 @@ import (
 
 type RedisStateStore struct {
 	StateStore
-	conf *RedisStateStoreConfig
-	cli  *redis.Client
+	cli *redis.Client
 }
 
 func NewRedisStateStore() (StateStore, error) {
-	if conf == nil {
-		return nil, ErrConfigNotInitialized
-	}
-	if conf.RedisConf == nil {
-		return nil, ErrRedisConfNotInitialized
-	}
-
-	redisConf := conf.RedisConf
-	cli := redis.NewClient(&redis.Options{
-		Addr:     redisConf.Address,
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-	if err := cli.Ping(context.Background()).Err(); err != nil {
-		return nil, err
-	}
-	return &RedisStateStore{
-		conf: redisConf,
-		cli:  cli,
-	}, nil
+	// TODO
+	return nil, nil
 }
 
 func (r *RedisStateStore) Get(ctx context.Context, key string) ([]byte, error) {
