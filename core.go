@@ -14,7 +14,7 @@ type ProcessFunc func(ctx context.Context, record *Record) error
 var (
 	initMut sync.Mutex
 
-	conf        *FollowerFunctionConfig
+	conf        *FollowerConfig
 	processFunc ProcessFunc
 	logs        *log.Logger
 
@@ -40,7 +40,7 @@ func Initialize(pf ProcessFunc) error {
 	}
 	defer resetFunc()
 
-	// TODO: query conf from leader function
+	// TODO: query conf from monitor function
 	if conf.FunctionName == "" {
 		return fmt.Errorf("function name cannot be empty")
 	}

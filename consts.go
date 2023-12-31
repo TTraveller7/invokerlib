@@ -9,3 +9,8 @@ const (
 )
 
 var consumerNotify = fmt.Errorf("consumer exits with notify")
+
+const (
+	REQUEST_KEY_COMMAND = "invoker_command"
+	REQUEST_KEY_PARAMS  = "invoker_params"
+)

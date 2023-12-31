@@ -5,11 +5,6 @@ type KafkaConfig struct {
 	Topic   string
 }
 
-type UserConfig struct {
-	FunctionConfigs    []*UserFunctionConfig
-	GlobalStoreConfigs []*GlobalStoreConfig
-}
-
 type UserFunctionConfig struct {
 	// Files are the paths of user-defined go files, which contains fission handler, process, and init functions.
 	Files []string
@@ -22,19 +17,17 @@ type UserFunctionConfig struct {
 	// in a function is capped by the number of partitions in that function's source Kafka topic.
 	NumOfWorker int
 
+	// NumOfPartition defines the number of partitions of the topic for the function.
+	NumOfPartition int
+
 	// SourceFunctionName and SourceKafkaConfig defines the source of a function's input. Either SourceFunctionName
-	// or SourceKafkaConfig must be not empty. A function cannot have both non-empty SourceFunctionName
-	// and non-empty SourceKafkaConfig.
+	// or SourceKafkaConfig must be not empty. If both are specified, SourceKafkaConfig will be used.
 	SourceFunctionName string
 	SourceKakfaConfig  *KafkaConfig
 
 	// DestFunctioNames are the destination functions of a function's output. A function can have zero or more
 	// destination function.
 	DestFunctionNames []string
-
-	// DestKAfkaConfigs are the destination Kafka topics of a function's output. A function can have zero or more
-	// destination Kafka topic.
-	DestKafkaConfigs []*KafkaConfig
 }
 
 type GlobalStoreConfig struct {
@@ -45,10 +38,20 @@ type GlobalStoreConfig struct {
 	// GlobalStoreType is the type of a global store. Refer to GlobalStateStoreTypes in state_store.go for
 	// possible store types.
 	GlobalStoreType string
+
+	// GlobalStoreSpec specifies further configuration of this global store.
+	GlobalStoreSpec map[string]string
 }
 
-type FollowerFunctionConfig struct {
-	// TODO: this shld be in global config
+type RootConfig struct {
+	FunctionConfigs    []*UserFunctionConfig
+	GlobalStoreConfigs []*GlobalStoreConfig
+
+	// Currently we assume all interim topics are stored on one single cluster
+	GlobalKafkaConfig *KafkaConfig
+}
+
+type FollowerConfig struct {
 	FunctionName            string
 	NumOfWorker             int
 	KafkaSrc                *KafkaConfig
