@@ -1,6 +1,11 @@
 package fctl
 
-import "strings"
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"strings"
+)
 
 func ConcatPath(paths ...string) string {
 	sb := strings.Builder{}
@@ -12,4 +17,12 @@ func ConcatPath(paths ...string) string {
 		}
 	}
 	return sb.String()
+}
+
+func MarshalToReader(s any) (io.Reader, error) {
+	sBytes, err := json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(sBytes), nil
 }

@@ -15,12 +15,12 @@ type FollowerMetadata struct {
 	Status              string
 }
 
-var monitorCommands = struct {
-	loadRootConfig string
-	createTopics   string
+var MonitorCommands = struct {
+	LoadRootConfig string
+	CreateTopics   string
 }{
-	loadRootConfig: "load_root_config",
-	createTopics:   "create_topics",
+	LoadRootConfig: "load_root_config",
+	CreateTopics:   "create_topics",
 }
 
 var functionStatus = struct {
@@ -54,35 +54,29 @@ func monitorHandle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	contentMap := make(map[string]any, 0)
-	if err := json.Unmarshal(content, &contentMap); err != nil {
-		err = fmt.Errorf("unmarshal content map failed: %v", err)
+	req := &InvokerRequest{}
+	if err := json.Unmarshal(content, req); err != nil {
+		err = fmt.Errorf("unmarshal request failed: %v", err)
+		logs.Printf("%v", err)
+		return err
+	}
+	if req.Command == "" {
+		err = fmt.Errorf("request command is missing")
 		logs.Printf("%v", err)
 		return err
 	}
 
-	cmd, exists := contentMap[REQUEST_KEY_COMMAND]
-	if !exists {
-		err := fmt.Errorf("no command found in request body, body=%s", string(content))
-		logs.Printf("%v", err)
-		return err
-	}
-	paramsAny, paramExists := contentMap[REQUEST_KEY_PARAMS]
-	var params map[string]any
-	if paramExists {
-		params = paramsAny.(map[string]any)
-	}
-	switch cmd {
-	case monitorCommands.loadRootConfig:
-		if err := loadRootConfig(paramExists, content, params); err != nil {
+	switch req.Command {
+	case MonitorCommands.LoadRootConfig:
+		if err := loadRootConfig(req); err != nil {
 			return err
 		}
-	case monitorCommands.createTopics:
+	case MonitorCommands.CreateTopics:
 		if err := createTopics(); err != nil {
 			return err
 		}
 	default:
-		err := fmt.Errorf("unrecognized command %v", cmd)
+		err := fmt.Errorf("unrecognized command %v", req.Command)
 		logs.Printf("%v", err)
 		return err
 	}
@@ -90,22 +84,16 @@ func monitorHandle(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func loadRootConfig(paramExists bool, content []byte, params map[string]any) error {
+func loadRootConfig(req *InvokerRequest) error {
 	logs.Printf("monitor load root config starts")
-	if !paramExists {
-		err := fmt.Errorf("no params is found for command %v, body=%s", monitorCommands.loadRootConfig, string(content))
+	if req.Params == nil {
+		err := fmt.Errorf("no params is found for command %v", MonitorCommands.LoadRootConfig)
 		logs.Printf("%v", err)
 		return err
 	}
 
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		err := fmt.Errorf("marshal params failed: %v", err)
-		logs.Printf("%v", err)
-		return err
-	}
-	if err := json.Unmarshal(paramsBytes, rootConfig); err != nil {
-		err := fmt.Errorf("unmarshal loadGlobalConfig params failed: err=%v, params=%s", err, string(paramsBytes))
+	if err := UnmarshalParams(req.Params, rootConfig); err != nil {
+		err := fmt.Errorf("unmarshal loadGlobalConfig params failed: %v", err)
 		logs.Printf("%v", err)
 		return err
 	}

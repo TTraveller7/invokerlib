@@ -8,4 +8,5 @@ const (
 var (
 	FctlHome             string
 	MonitorDirectoryPath string
+	FissionRouter        string
 )
