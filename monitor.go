@@ -98,40 +98,8 @@ func loadRootConfig(req *InvokerRequest) error {
 		return err
 	}
 
-	// Validate function configs
-	// TODO: check for topological ordering
-	if len(rootConfig.FunctionConfigs) == 0 {
-		err := fmt.Errorf("validate config failed: no function is specified in config")
-		logs.Printf("%v", err)
-		return err
-	}
-	functionNameSet := make(map[string]bool, 0)
-	for _, functionConfig := range rootConfig.FunctionConfigs {
-		if functionNameSet[functionConfig.FunctionName] {
-			err := fmt.Errorf("validate config failed: duplicate function name %s", functionConfig.FunctionName)
-			logs.Printf("%v", err)
-			return err
-		}
-		functionNameSet[functionConfig.FunctionName] = true
-		if functionConfig.SourceFunctionName == "" && functionConfig.SourceKakfaConfig == nil {
-			err := fmt.Errorf("validate config failed: no source is specified for function %s", functionConfig.FunctionName)
-			logs.Printf("%v", err)
-			return err
-		}
-	}
-	for _, functionConfig := range rootConfig.FunctionConfigs {
-		srcName := functionConfig.SourceFunctionName
-		if len(srcName) > 0 && !functionNameSet[srcName] {
-			err := fmt.Errorf("validate config failed: source %s for function %s does not exist", srcName, functionConfig.FunctionName)
-			logs.Printf("%v", err)
-			return err
-		}
-	}
-
-	// validate global kafka config
-	if rootConfig.GlobalKafkaConfig == nil {
-		err := fmt.Errorf("validate config failed: global kafka config is missing")
-		logs.Printf("%v", err)
+	if err := rootConfig.Validate(); err != nil {
+		logs.Printf("validate root config failed: %v", err)
 		return err
 	}
 
@@ -160,6 +128,11 @@ func createTopics() error {
 
 	// create topics
 	for _, functionConfig := range rootConfig.FunctionConfigs {
+		if functionConfig.NumOfPartition == 0 {
+			// skip output topic creation of this function
+			continue
+		}
+
 		functionName := functionConfig.FunctionName
 
 		// use function name as topic name

@@ -1,4 +1,4 @@
-package fctl
+package main
 
 import (
 	"os"
@@ -33,6 +33,10 @@ func create() {
 	}
 
 	// validate config
+	if err := conf.Validate(); err != nil {
+		logs.Printf("validate config failed: %v", err)
+		return
+	}
 
 	// create monitor function
 	err = Run("fission", "fn", "create",

@@ -1,4 +1,4 @@
-package fctl
+package main
 
 func initFctl() {
 	err := Run("rm", "-rf", FctlHome)
@@ -7,27 +7,21 @@ func initFctl() {
 		return
 	}
 
-	err = Run("mkdir", "-p", "-m", "777", FctlHome)
+	err = Run("mkdir", "-p", "-m", "700", FctlHome)
 	if err != nil {
 		logs.Printf("create new FctlHome directory failed: %v", err)
 		return
 	}
 
-	err = Run("cd", FctlHome)
-	if err != nil {
-		logs.Printf("change directory to FctlHome failed: %v", err)
-		return
-	}
-
 	// download monitor
-	err = Run("wget", `http://github.com/TTraveller7/invokerlib-monitor/archive/main.tar.gz`)
+	err = FctlRun("wget", "--timeout=10", `http://github.com/TTraveller7/invokerlib-monitor/archive/main.tar.gz`)
 	if err != nil {
 		logs.Printf("download monitor failed: %v", err)
 		return
 	}
-	defer Run("rm", "main.tar.gz")
+	defer FctlRun("rm", "main.tar.gz")
 
-	err = Run("tar", "-xvf", "main.tar.gz")
+	err = FctlRun("tar", "-xvf", "main.tar.gz")
 	if err != nil {
 		logs.Printf("extract monitor failed: %v", err)
 		return

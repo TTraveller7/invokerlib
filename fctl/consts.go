@@ -1,4 +1,4 @@
-package fctl
+package main
 
 const (
 	FctlDirectoryName    = ".fctl"
