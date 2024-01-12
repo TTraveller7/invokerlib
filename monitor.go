@@ -40,10 +40,17 @@ var (
 )
 
 func MonitorHandle(w http.ResponseWriter, r *http.Request) {
-	if err := monitorHandle(w, r); err != nil {
-		respBytes := marshalledErrorResponse(err)
-		w.Write(respBytes)
-	}
+	var err error
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			err = fmt.Errorf("%v", panicErr)
+		}
+		if err != nil {
+			respBytes := marshalledErrorResponse(err)
+			w.Write(respBytes)
+		}
+	}()
+	err = monitorHandle(w, r)
 }
 
 func monitorHandle(w http.ResponseWriter, r *http.Request) error {
