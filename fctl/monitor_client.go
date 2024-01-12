@@ -42,7 +42,7 @@ func (m *MonitorClient) LoadRootConfig(conf *invokerlib.RootConfig) (*invokerlib
 		return nil, err
 	}
 
-	resp, err := http.Post(ConcatPath(m.url, invokerlib.MonitorCommands.LoadRootConfig), MimeTypeJson, reader)
+	resp, err := http.Post(ConcatPath(m.url, "loadRootConfig"), MimeTypeJson, reader)
 	if err != nil {
 		err := fmt.Errorf("monitor client send request failed: %v", err)
 		logs.Printf("%v", err)

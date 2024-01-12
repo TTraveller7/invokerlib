@@ -17,7 +17,7 @@ func main() {
 	FctlHome = ConcatPath(homePath, FctlDirectoryName)
 	MonitorDirectoryPath = ConcatPath(FctlHome, MonitorDirectoryName)
 	FissionRouter = "http://127.0.0.1"
-	if fr := os.Getenv("$FISSION_ROUTER"); fr != "" {
+	if fr := os.Getenv("FISSION_ROUTER"); fr != "" {
 		FissionRouter = fr
 	}
 

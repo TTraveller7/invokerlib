@@ -38,10 +38,30 @@ func create() {
 		return
 	}
 
+	fissionStartSuccess := false
+
+	// create fission env
+	err = Run("fission", "env", "create",
+		"--name", FissionEnv,
+		"--image", "ttraveller7/go-env-1.19",
+		"--builder", "ttraveller7/go-builder-1.19",
+		"--poolsize", "1",
+		"--version", "3")
+	if err != nil {
+		logs.Printf("create fission env failed: %v", err)
+		return
+	}
+	defer func() {
+		if !fissionStartSuccess {
+			Run("fission", "env", "delete",
+				"--name", FissionEnv)
+		}
+	}()
+
 	// create monitor function
 	err = Run("fission", "fn", "create",
 		"--name", "monitor",
-		"--env", "fctl",
+		"--env", FissionEnv,
 		"--entrypoint", "Handler",
 		"--src", ConcatPath(MonitorDirectoryPath, "go.mod"),
 		"--src", ConcatPath(MonitorDirectoryPath, "go.sum"),
@@ -50,9 +70,16 @@ func create() {
 		logs.Printf("create monitor function failed: %v", err)
 		return
 	}
+	defer func() {
+		if !fissionStartSuccess {
+			Run("fission", "fn", "delete",
+				"--name", "monitor")
+		}
+	}()
 
 	// create monitor http endpoint
 	err = Run("fission", "httptrigger", "create",
+		"--name", "monitor-load-root-config",
 		"--url", "/monitor/loadRootConfig",
 		"--method", "POST",
 		"--function", "monitor")
@@ -60,6 +87,12 @@ func create() {
 		logs.Printf("create monitor httptrigger failed: %v", err)
 		return
 	}
+	defer func() {
+		if !fissionStartSuccess {
+			Run("fission", "httptrigger", "delete",
+				"--name", "monitor-load-root-config")
+		}
+	}()
 
 	// load monitor config
 	cli := NewMonitorClient()
