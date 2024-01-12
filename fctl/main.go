@@ -1,4 +1,4 @@
-package fctl
+package main
 
 import (
 	"log"
@@ -13,6 +13,14 @@ func main() {
 		return
 	}
 
+	homePath := os.Getenv("HOME")
+	FctlHome = ConcatPath(homePath, FctlDirectoryName)
+	MonitorDirectoryPath = ConcatPath(FctlHome, MonitorDirectoryName)
+	FissionRouter = "http://127.0.0.1"
+	if fr := os.Getenv("FISSION_ROUTER"); fr != "" {
+		FissionRouter = fr
+	}
+
 	if os.Args[1] == "init" {
 		initFctl()
 		return
@@ -21,7 +29,6 @@ func main() {
 	if err := check(); err != nil {
 		return
 	}
-	MonitorDirectoryPath = ConcatPath(FctlHome, MonitorDirectoryName)
 
 	switch os.Args[1] {
 	case "create":
@@ -30,8 +37,6 @@ func main() {
 }
 
 func check() error {
-	homePath := os.Getenv("HOME")
-	FctlHome = ConcatPath(homePath, FctlDirectoryName)
 	if _, err := os.Stat(FctlHome); err != nil {
 		logs.Printf("load FctlHome failed: %v. Try `fctl init`", err)
 		return err

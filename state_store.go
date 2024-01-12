@@ -3,8 +3,8 @@ package invokerlib
 import "context"
 
 var GlobalStateStoreTypes = struct {
-	Redis string,
-} {
+	Redis string
+}{
 	Redis: "Redis",
 }
 

@@ -6,6 +6,7 @@ require (
 	github.com/IBM/sarama v1.42.1
 	github.com/google/uuid v1.5.0
 	github.com/redis/go-redis/v9 v9.3.0
+	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v2 v2.4.0
 )
 
