@@ -19,8 +19,8 @@ var MonitorCommands = struct {
 	LoadRootConfig string
 	CreateTopics   string
 }{
-	LoadRootConfig: "load_root_config",
-	CreateTopics:   "create_topics",
+	LoadRootConfig: "loadRootConfig",
+	CreateTopics:   "createTopics",
 }
 
 var functionStatus = struct {
