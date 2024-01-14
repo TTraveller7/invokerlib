@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debian-testfield
+  labels:
+    app: debian-testfield
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debian-testfield
+  template:
+    metadata:
+      name: debian-testfield
+      labels:
+        app: debian-testfield
+    spec:
+      containers:
+        - name: debian
+          image: docker.io/debian:bookworm
+          command: ['sleep', '36000']
