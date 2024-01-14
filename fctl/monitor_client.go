@@ -23,16 +23,9 @@ func NewMonitorClient() *MonitorClient {
 	}
 }
 
-func (m *MonitorClient) LoadRootConfig(conf *invokerlib.RootConfig) (*invokerlib.InvokerResponse, error) {
-	params, err := invokerlib.MarshalToParams(conf)
-	if err != nil {
-		err := fmt.Errorf("monitor client marshal to params failed: %v", err)
-		logs.Printf("%v", err)
-		return nil, err
-	}
-
+func (m *MonitorClient) sendCommand(params map[string]any, command string) (*invokerlib.InvokerResponse, error) {
 	req := invokerlib.InvokerRequest{
-		Command: invokerlib.MonitorCommands.LoadRootConfig,
+		Command: command,
 		Params:  params,
 	}
 	reader, err := MarshalToReader(req)
@@ -68,4 +61,28 @@ func (m *MonitorClient) LoadRootConfig(conf *invokerlib.RootConfig) (*invokerlib
 	}
 
 	return invokerResp, nil
+}
+
+func (m *MonitorClient) LoadRootConfig(conf *invokerlib.RootConfig) (*invokerlib.InvokerResponse, error) {
+	params, err := invokerlib.MarshalToParams(conf)
+	if err != nil {
+		err := fmt.Errorf("monitor client marshal to params failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	resp, err := m.sendCommand(params, invokerlib.MonitorCommands.LoadRootConfig)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (m *MonitorClient) CreateTopics() (*invokerlib.InvokerResponse, error) {
+	params := make(map[string]any, 0)
+	resp, err := m.sendCommand(params, invokerlib.MonitorCommands.CreateTopics)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
