@@ -19,7 +19,7 @@ type MonitorClient struct {
 func NewMonitorClient() *MonitorClient {
 	return &MonitorClient{
 		cli: http.DefaultClient,
-		url: ConcatPath(FissionRouter, "monitor"),
+		url: ConcatPath(conf.FissionRouter, "monitor"),
 	}
 }
 
@@ -42,13 +42,14 @@ func (m *MonitorClient) LoadRootConfig(conf *invokerlib.RootConfig) (*invokerlib
 		return nil, err
 	}
 
-	resp, err := http.Post(ConcatPath(m.url, "loadRootConfig"), MimeTypeJson, reader)
+	url := ConcatPath(m.url, "loadRootConfig")
+	resp, err := http.Post(url, MimeTypeJson, reader)
 	if err != nil {
 		err := fmt.Errorf("monitor client send request failed: %v", err)
 		logs.Printf("%v", err)
 		return nil, err
 	} else if resp == nil || resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("monitor client send request failed: resp=%v, status=%s", resp, resp.Status)
+		err := fmt.Errorf("monitor client send request failed: url=%s, resp=%v, status=%s", url, resp, resp.Status)
 		logs.Printf("%v", err)
 		return nil, err
 	}

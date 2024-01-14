@@ -1,13 +1,12 @@
 package main
 
 const (
-	FctlDirectoryName    = ".fctl"
-	MonitorDirectoryName = "invokerlib-monitor-main"
-	FissionEnv           = "invoker"
+	FctlHomeDirectoryName = ".fctl"
+	MonitorDirectoryName  = "invokerlib-monitor-main"
+	FissionEnv            = "invoker"
+	ConfigFileName        = "config.yaml"
 )
 
 var (
-	FctlHome             string
-	MonitorDirectoryPath string
-	FissionRouter        string
+	FctlHome string
 )

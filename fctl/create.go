@@ -2,13 +2,14 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/TTraveller7/invokerlib"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
-func create() {
+func Create() {
 	pathPtr := pflag.StringP("config", "c", "", "yaml config path")
 
 	pflag.Parse()
@@ -26,14 +27,14 @@ func create() {
 		return
 	}
 
-	conf := &invokerlib.RootConfig{}
-	if err := yaml.Unmarshal(content, conf); err != nil {
+	invokerConfig := &invokerlib.RootConfig{}
+	if err := yaml.Unmarshal(content, invokerConfig); err != nil {
 		logs.Printf("unmarshal config file failed: %v", err)
 		return
 	}
 
 	// validate config
-	if err := conf.Validate(); err != nil {
+	if err := invokerConfig.Validate(); err != nil {
 		logs.Printf("validate config failed: %v", err)
 		return
 	}
@@ -63,9 +64,9 @@ func create() {
 		"--name", "monitor",
 		"--env", FissionEnv,
 		"--entrypoint", "Handler",
-		"--src", ConcatPath(MonitorDirectoryPath, "go.mod"),
-		"--src", ConcatPath(MonitorDirectoryPath, "go.sum"),
-		"--src", ConcatPath(MonitorDirectoryPath, "handler.go"))
+		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.mod"),
+		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.sum"),
+		"--src", ConcatPath(conf.MonitorDirectoryPath, "handler.go"))
 	if err != nil {
 		logs.Printf("create monitor function failed: %v", err)
 		return
@@ -94,12 +95,19 @@ func create() {
 		}
 	}()
 
+	time.Sleep(3 * time.Second)
+
 	// load monitor config
 	cli := NewMonitorClient()
-	if _, err = cli.LoadRootConfig(conf); err != nil {
+	resp, err := cli.LoadRootConfig(invokerConfig)
+	if err != nil {
 		logs.Printf("load root config failed: %v", err)
 		return
+	} else if resp.Code != invokerlib.ResponseCodes.Success {
+		logs.Printf("load root config failed: %s", resp.Message)
+		return
 	}
+	logs.Printf("loadRootConfig finished with message: %v", resp.Message)
 
-	// create topics
+	fissionStartSuccess = true
 }
