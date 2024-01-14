@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"runtime/debug"
 
 	"github.com/IBM/sarama"
@@ -41,86 +43,91 @@ var (
 )
 
 func MonitorHandle(w http.ResponseWriter, r *http.Request) {
+	if logs == nil {
+		logs = log.New(os.Stdout, "[monitor] ", log.LstdFlags|log.Lshortfile)
+	}
+
+	resp := &InvokerResponse{}
 	var err error
 	defer func() {
 		if panicErr := recover(); panicErr != nil {
 			err = fmt.Errorf("%v. %s", panicErr, string(debug.Stack()))
 		}
 		if err != nil {
-			respBytes := marshalledErrorResponse(err)
-			w.Write(respBytes)
+			resp = failureResponse(err)
 		}
+		respBytes, _ := json.Marshal(resp)
+		w.Write(respBytes)
 	}()
-	err = monitorHandle(w, r)
-}
 
-func monitorHandle(w http.ResponseWriter, r *http.Request) error {
 	content, err := io.ReadAll(r.Body)
 	if err != nil {
 		err = fmt.Errorf("read request body failed: %v", err)
 		logs.Printf("%v", err)
-		return err
+		return
 	}
 
 	req := &InvokerRequest{}
 	if err := json.Unmarshal(content, req); err != nil {
 		err = fmt.Errorf("unmarshal request failed: %v", err)
 		logs.Printf("%v", err)
-		return err
+		return
 	}
 	if req.Command == "" {
 		err = fmt.Errorf("request command is missing")
 		logs.Printf("%v", err)
-		return err
+		return
 	}
 
+	resp, err = monitorHandle(req)
+	if err != nil {
+		err = fmt.Errorf("handle monitor command failed: %v", err)
+		logs.Printf("%v", err)
+	}
+}
+
+func monitorHandle(req *InvokerRequest) (*InvokerResponse, error) {
 	switch req.Command {
 	case MonitorCommands.LoadRootConfig:
-		if err := loadRootConfig(req); err != nil {
-			return err
-		}
+		return loadRootConfig(req)
 	case MonitorCommands.CreateTopics:
-		if err := createTopics(); err != nil {
-			return err
-		}
+		return createTopics()
 	default:
 		err := fmt.Errorf("unrecognized command %v", req.Command)
 		logs.Printf("%v", err)
-		return err
+		return nil, err
 	}
-
-	return nil
 }
 
-func loadRootConfig(req *InvokerRequest) error {
+func loadRootConfig(req *InvokerRequest) (*InvokerResponse, error) {
 	logs.Printf("monitor load root config starts")
 	if req.Params == nil {
 		err := fmt.Errorf("no params is found for command %v", MonitorCommands.LoadRootConfig)
 		logs.Printf("%v", err)
-		return err
+		return nil, err
 	}
 
 	if err := UnmarshalParams(req.Params, rootConfig); err != nil {
 		err := fmt.Errorf("unmarshal loadGlobalConfig params failed: %v", err)
 		logs.Printf("%v", err)
-		return err
+		return nil, err
 	}
 
 	if err := rootConfig.Validate(); err != nil {
 		logs.Printf("validate root config failed: %v", err)
-		return err
+		return nil, err
 	}
 
-	logs.Printf("monitor load root config starts")
-	return nil
+	logs.Printf("monitor load root config finshed")
+	return successResponse(), nil
 }
 
-func createTopics() error {
+func createTopics() (*InvokerResponse, error) {
 	logs.Printf("monitor create topics starts")
 	if rootConfig == nil {
 		err := fmt.Errorf("create topics failed: root config is not loaded")
 		logs.Printf("%v", err)
-		return err
+		return nil, err
 	}
 
 	adminConf := sarama.NewConfig()
@@ -131,7 +138,7 @@ func createTopics() error {
 	if err != nil {
 		err = fmt.Errorf("create admin client failed: %v", err)
 		logs.Printf("%v", err)
-		return err
+		return nil, err
 	}
 
 	// create topics
@@ -152,11 +159,11 @@ func createTopics() error {
 		if err != nil {
 			err = fmt.Errorf("create topic failed: %v", err)
 			logs.Printf("%v", err)
-			if err := removeTopics(); err != nil {
+			if _, err := removeTopics(); err != nil {
 				logs.Printf("remove topics failed: %v", err)
-				return err
+				return nil, err
 			} else {
-				return err
+				return nil, err
 			}
 		}
 
@@ -168,14 +175,14 @@ func createTopics() error {
 	}
 
 	logs.Printf("monitor create topics succeeds")
-	return nil
+	return successResponse(), nil
 }
 
-func removeTopics() error {
+func removeTopics() (*InvokerResponse, error) {
 	for _, functionMetadata := range followerMetadata {
 		if err := adminClient.DeleteTopic(functionMetadata.FollowerKafkaConfig.Topic); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return successResponse(), nil
 }
