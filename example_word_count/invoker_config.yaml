@@ -17,9 +17,9 @@ functionConfigs:
     - counter.go
     functionName: "counter"
     numOfWorker: 1
-    numOfPartition: 0
+    numOfPartition: 1
     sourceFunction: "splitter"
 
 globalKafkaConfig: 
-  address: ""
+  address: "kafka:9092"
   topic: ""
