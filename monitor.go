@@ -39,7 +39,7 @@ var functionStatus = struct {
 var (
 	rootConfig       *RootConfig = &RootConfig{}
 	adminClient      sarama.ClusterAdmin
-	followerMetadata map[string]*FollowerMetadata
+	followerMetadata map[string]*FollowerMetadata = make(map[string]*FollowerMetadata, 0)
 )
 
 func MonitorHandle(w http.ResponseWriter, r *http.Request) {
