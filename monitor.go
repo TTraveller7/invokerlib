@@ -37,7 +37,7 @@ var functionStatus = struct {
 }
 
 var (
-	rootConfig       *RootConfig
+	rootConfig       *RootConfig = &RootConfig{}
 	adminClient      sarama.ClusterAdmin
 	followerMetadata map[string]*FollowerMetadata
 )
