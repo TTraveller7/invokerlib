@@ -1,6 +1,8 @@
 package invokerlib
 
-import "encoding/json"
+import (
+	"os"
+)
 
 var ResponseCodes = struct {
 	Success int
@@ -11,21 +13,22 @@ var ResponseCodes = struct {
 }
 
 type InvokerResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code     int    `json:"code"`
+	Message  string `json:"message"`
+	HostName string `json:"host_name"`
 }
 
-// marshalledErrorResponse returns a marshalled json struct containing error message.
-func marshalledErrorResponse(err error) []byte {
-	errMsg := ""
-	if err != nil {
-		errMsg = err.Error()
+func successResponse() *InvokerResponse {
+	return &InvokerResponse{
+		Code:     ResponseCodes.Success,
+		HostName: os.Getenv("HOSTNAME"),
 	}
+}
 
-	resp := InvokerResponse{
-		Code:    ResponseCodes.Failed,
-		Message: errMsg,
+func failureResponse(err error) *InvokerResponse {
+	return &InvokerResponse{
+		Code:     ResponseCodes.Failed,
+		HostName: os.Getenv("HOSTNAME"),
+		Message:  err.Error(),
 	}
-	respBytes, _ := json.Marshal(resp)
-	return respBytes
 }
