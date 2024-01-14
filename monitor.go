@@ -154,7 +154,7 @@ func createTopics() (*InvokerResponse, error) {
 		topicName := functionName
 		err := adminClient.CreateTopic(topicName, &sarama.TopicDetail{
 			NumPartitions:     int32(functionConfig.NumOfPartition),
-			ReplicationFactor: 0,
+			ReplicationFactor: 1,
 		}, false)
 		if err != nil {
 			err = fmt.Errorf("create topic failed: %v", err)
