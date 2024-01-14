@@ -10,6 +10,7 @@ clean:
 build:
 	cd fctl && go build -o ../target/fctl .
 
-install: 
+install:
 	rm -f $(INSTALL_PATH)
 	cp target/fctl $(INSTALL_PATH)
+	
