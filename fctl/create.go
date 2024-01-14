@@ -99,10 +99,15 @@ func Create() {
 
 	// load monitor config
 	cli := NewMonitorClient()
-	if _, err = cli.LoadRootConfig(invokerConfig); err != nil {
+	resp, err := cli.LoadRootConfig(invokerConfig)
+	if err != nil {
 		logs.Printf("load root config failed: %v", err)
 		return
+	} else if resp.Code != invokerlib.ResponseCodes.Success {
+		logs.Printf("load root config failed: %s", resp.Message)
+		return
 	}
+	logs.Printf("loadRootConfig finished with message: %v", resp.Message)
 
-	// create topics
+	fissionStartSuccess = true
 }

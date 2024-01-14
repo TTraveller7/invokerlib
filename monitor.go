@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/IBM/sarama"
 )
@@ -43,7 +44,7 @@ func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 	var err error
 	defer func() {
 		if panicErr := recover(); panicErr != nil {
-			err = fmt.Errorf("%v", panicErr)
+			err = fmt.Errorf("%v. %s", panicErr, string(debug.Stack()))
 		}
 		if err != nil {
 			respBytes := marshalledErrorResponse(err)
