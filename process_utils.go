@@ -7,10 +7,10 @@ import (
 	"github.com/IBM/sarama"
 )
 
-func PassToFunction(ctx context.Context, functionName string, record *Record) error {
-	kafkaDest, exists := conf.FunctionNameToKafkaDest[functionName]
+func PassToOutputTopic(ctx context.Context, name string, record *Record) error {
+	kafkaDest, exists := destNameToKafkaConfig[name]
 	if !exists {
-		return fmt.Errorf("function destination with name %s does not exist", functionName)
+		return fmt.Errorf("output topic with name %s does not exist", name)
 	}
 	producer, err := getProducer(kafkaDest.Topic)
 	if err != nil {

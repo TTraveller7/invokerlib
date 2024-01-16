@@ -2,35 +2,63 @@ package invokerlib
 
 import "fmt"
 
+type GlobalKafkaConfig struct {
+	Address string `yaml:"address"`
+}
+
 type KafkaConfig struct {
 	Address string `yaml:"address"`
 	Topic   string `yaml:"topic"`
 }
 
-type UserFunctionConfig struct {
-	// ParentDirectory is the parent directory where user-defined go files are located.
+type NamedKafkaConfig struct {
+	Name    string `yaml:"name"`
+	Address string `yaml:"address"`
+	Topic   string `yaml:"topic"`
+}
+
+// Assumptions:
+// 1. Each processor can read from one input topic.
+// 2. Each processor can write to one or more output topic.
+// 3. All interim topics are stored on one single Kafka cluster.
+
+// Proposals:
+// 1. Topological ordering?
+// 2. Monitor healthchecks
+
+type ProcessorConfig struct {
+	// ParentDirectory is the parent directory that stores user-defined go files.
 	ParentDirectory string `yaml:"parentDirectory"`
 
-	// Files are the paths of user-defined go files, which contains fission handler, process, and init functions.
-	// If ParentDirectory is not empty, the file paths will be interpreted as relative paths to parent directory.
+	// Files are the paths of user-defined go files, which includes fission handler, process function, init function.
+	// If ParentDirectory is not empty, the file paths will be treate as paths relative to parent directory.
 	Files []string `yaml:"files"`
 
-	// FunctionName is the name of the function. The name of a function should be unique among all functions
-	// in a config.
-	FunctionName string `yaml:"functionName"`
+	// Name is the name of the processor, which should be unique among all processors in a config.
+	Name string `yaml:"name"`
 
-	// NumOfWorker defines the number of workers in function. Note that the maximum of number of parallel workers
-	// in a function is capped by the number of partitions in that function's source Kafka topic.
+	// NumOfWorker defines the number of workers in processor. Note that the number of parallel workers
+	// in a processor is capped by the number of partitions in that processor's source Kafka topic.
 	NumOfWorker int `yaml:"numOfWorker"`
 
-	// NumOfPartition defines the number of partitions of the output topic for the function.
-	// If NumOfPartition equals to 0, no output topic will be created for this function.
-	NumOfPartition int `yaml:"numOfPartition"`
+	// InputProcessor and InputKafkaConfig defines the source of a processor's input. Either InputProcessor
+	// or InputKafkaConfig must be not empty. If both are specified, InputKafkaConfig will be used.
+	InputProcessor   string       `yaml:"inputProcessor"`
+	InputKafkaConfig *KafkaConfig `yaml:"inputKafkaConfig"`
 
-	// SourceFunction and SourceKafkaConfig defines the source of a function's input. Either SourceFunction
-	// or SourceKafkaConfig must be not empty. If both are specified, SourceKafkaConfig will be used.
-	SourceFunction    string       `yaml:"sourceFunction"`
-	SourceKakfaConfig *KafkaConfig `yaml:"sourceKafkaConfig"`
+	// OutputConfig defines the output of a processor's input. OutputConfig must be specified in a config.
+	OutputConfig *OutputConfig `yaml:"outputConfig"`
+}
+
+type OutputConfig struct {
+	// DefaultOutputTopicPartitions defines the number of partitions of the default output topic of the processor.
+	// If DefaultOutputTopicPartitions is set to 0, the default output topic of the processor will not be created.
+	DefaultOutputTopicPartitions int      `yaml:"defaultOutputTopicPartitions"`
+	OutputProcessors             []string `yaml:"outputProcessors"`
+
+	// OutputKafkaConfigs defines non-processor destinations. The name of a self-defined OutputKafkaConfig
+	// must not be the same as any of the processor names, and must be unique among all the OutputKafkaConfigs.
+	OutputKafkaConfigs []*NamedKafkaConfig `yaml:"outputKafkaConfigs"`
 }
 
 type GlobalStoreConfig struct {
@@ -47,51 +75,57 @@ type GlobalStoreConfig struct {
 }
 
 type RootConfig struct {
-	// FunctionConfigs defines all the functions in the stream processing pipeline. At least one function config
-	// must present in root config.
-	FunctionConfigs []*UserFunctionConfig `yaml:"functionConfigs"`
+	// ProcessorConfigs defines all the processors in the stream processing pipeline. At least one processor config
+	// must be provided.
+	ProcessorConfigs []*ProcessorConfig `yaml:"processorConfigs"`
 
 	// GlobalStoreConfigs defines all global stores used in the stream processing pipeline.
 	GlobalStoreConfigs []*GlobalStoreConfig `yaml:"globalStoreConfigs"`
 
-	// GlobalKafkaConfig specifies which cluster the interim topics should be created on.
-	// Currently we assume all interim topics are stored on one single cluster
-	GlobalKafkaConfig *KafkaConfig `yaml:"globalKafkaConfig"`
+	// GlobalKafkaConfig specifies which Kafka cluster the interim topics should be created on.
+	GlobalKafkaConfig *GlobalKafkaConfig `yaml:"globalKafkaConfig"`
 }
 
-type FollowerConfig struct {
-	FunctionName            string
-	NumOfWorker             int
-	KafkaSrc                *KafkaConfig
-	FunctionNameToKafkaDest map[string]*KafkaConfig
-}
-
-// TODO: check for topological ordering
 func (rc *RootConfig) Validate() error {
-	if len(rc.FunctionConfigs) == 0 {
-		return fmt.Errorf("no function is specified in config")
+	if len(rc.ProcessorConfigs) == 0 {
+		return fmt.Errorf("no processor is specified in config")
 	}
-	functionNameSet := make(map[string]bool, 0)
-	for _, functionConfig := range rc.FunctionConfigs {
-		if functionNameSet[functionConfig.FunctionName] {
-			return fmt.Errorf("duplicate function name %s", functionConfig.FunctionName)
+	processorNameSet := make(map[string]bool, 0)
+	for _, pc := range rc.ProcessorConfigs {
+		name := pc.Name
+		if processorNameSet[name] {
+			return fmt.Errorf("duplicate processor name %s", name)
 		}
-		functionNameSet[functionConfig.FunctionName] = true
-		if functionConfig.SourceFunction == "" && functionConfig.SourceKakfaConfig == nil {
-			return fmt.Errorf("no source is specified for function %s", functionConfig.FunctionName)
+		processorNameSet[name] = true
+		if pc.InputProcessor == "" && pc.InputKafkaConfig == nil {
+			return fmt.Errorf("no source is specified for processor %s", name)
 		}
-		if functionConfig.NumOfWorker <= 0 {
-			return fmt.Errorf("NumOfWorker must be greater than 0 for function %s", functionConfig.FunctionName)
+		if pc.NumOfWorker <= 0 {
+			return fmt.Errorf("NumOfWorker must be greater than 0 for processor %s", name)
 		}
-		if functionConfig.NumOfPartition < 0 {
-			return fmt.Errorf("NumOfPartition must be greater than or equal to 0 for function %s",
-				functionConfig.FunctionName)
+		if pc.OutputConfig == nil {
+			return fmt.Errorf("output config is not specified for processor %s", name)
+		}
+		if pc.OutputConfig.DefaultOutputTopicPartitions < 0 {
+			return fmt.Errorf("DefaultOutputTopicPartitions must be greater than or equal to 0 for processor %s", name)
 		}
 	}
-	for _, functionConfig := range rc.FunctionConfigs {
-		srcName := functionConfig.SourceFunction
-		if len(srcName) > 0 && !functionNameSet[srcName] {
-			return fmt.Errorf("source %s for function %s does not exist", srcName, functionConfig.FunctionName)
+	for _, pc := range rc.ProcessorConfigs {
+		srcName := pc.InputProcessor
+		if len(srcName) > 0 && !processorNameSet[srcName] {
+			return fmt.Errorf("InputFunction %s for processor %s does not exist", srcName, pc.Name)
+		}
+		okcNameSet := make(map[string]bool, 0)
+		for _, okc := range pc.OutputConfig.OutputKafkaConfigs {
+			if processorNameSet[okc.Name] {
+				return fmt.Errorf("OutputKafkaConfig name %s in processor %s is duplicated with processor names.",
+					okc.Name, pc.Name)
+			}
+			if okcNameSet[okc.Name] {
+				return fmt.Errorf("OutputKafkaConfig name %s in processor %s is duplicated with another OutputKafkaConfig name.",
+					okc.Name, pc.Name)
+			}
+			okcNameSet[okc.Name] = true
 		}
 	}
 

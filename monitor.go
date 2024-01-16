@@ -12,10 +12,10 @@ import (
 	"github.com/IBM/sarama"
 )
 
-type FollowerMetadata struct {
-	FunctionName        string
-	FollowerKafkaConfig *KafkaConfig
-	Status              string
+type ProcessorMetadata struct {
+	ProcessorName              string
+	ProcessorOutputKafkaConfig *KafkaConfig
+	Status                     string
 }
 
 var MonitorCommands = struct {
@@ -26,7 +26,7 @@ var MonitorCommands = struct {
 	CreateTopics:   "createTopics",
 }
 
-var functionStatus = struct {
+var processorStatus = struct {
 	Pending string
 	Up      string
 	Down    string
@@ -37,9 +37,9 @@ var functionStatus = struct {
 }
 
 var (
-	rootConfig       *RootConfig = &RootConfig{}
-	adminClient      sarama.ClusterAdmin
-	followerMetadata map[string]*FollowerMetadata = make(map[string]*FollowerMetadata, 0)
+	rootConfig        *RootConfig = &RootConfig{}
+	adminClient       sarama.ClusterAdmin
+	processorMetadata map[string]*ProcessorMetadata = make(map[string]*ProcessorMetadata, 0)
 )
 
 func MonitorHandle(w http.ResponseWriter, r *http.Request) {
@@ -142,18 +142,19 @@ func createTopics() (*InvokerResponse, error) {
 	}
 
 	// create topics
-	for _, functionConfig := range rootConfig.FunctionConfigs {
-		if functionConfig.NumOfPartition == 0 {
-			// skip output topic creation of this function
+	for _, pc := range rootConfig.ProcessorConfigs {
+		numOfPartitions := pc.OutputConfig.DefaultOutputTopicPartitions
+		if numOfPartitions == 0 {
+			// skip output topic creation of this processor
 			continue
 		}
 
-		functionName := functionConfig.FunctionName
+		processorName := pc.Name
 
-		// use function name as topic name
-		topicName := functionName
+		// use processor name as topic name
+		topicName := processorName
 		err := adminClient.CreateTopic(topicName, &sarama.TopicDetail{
-			NumPartitions:     int32(functionConfig.NumOfPartition),
+			NumPartitions:     int32(numOfPartitions),
 			ReplicationFactor: 1,
 		}, false)
 		if err != nil {
@@ -167,11 +168,11 @@ func createTopics() (*InvokerResponse, error) {
 			}
 		}
 
-		meta := &FollowerMetadata{
-			FunctionName: functionName,
-			Status:       functionStatus.Pending,
+		meta := &ProcessorMetadata{
+			ProcessorName: processorName,
+			Status:        processorStatus.Pending,
 		}
-		followerMetadata[functionName] = meta
+		processorMetadata[processorName] = meta
 	}
 
 	logs.Printf("monitor create topics succeeds")
@@ -179,8 +180,8 @@ func createTopics() (*InvokerResponse, error) {
 }
 
 func removeTopics() (*InvokerResponse, error) {
-	for _, functionMetadata := range followerMetadata {
-		if err := adminClient.DeleteTopic(functionMetadata.FollowerKafkaConfig.Topic); err != nil {
+	for _, pmt := range processorMetadata {
+		if err := adminClient.DeleteTopic(pmt.ProcessorOutputKafkaConfig.Topic); err != nil {
 			return nil, err
 		}
 	}

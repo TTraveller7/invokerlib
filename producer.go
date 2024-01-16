@@ -26,7 +26,7 @@ func initProducers() error {
 	// one sarama producer per address
 	addrToSaramaProducer := make(map[string]sarama.SyncProducer, 0)
 
-	for _, producerConf := range conf.FunctionNameToKafkaDest {
+	for _, producerConf := range destNameToKafkaConfig {
 		if _, exists := addrToSaramaProducer[producerConf.Address]; !exists {
 			// create sarama producer
 			saramaProducer, err := sarama.NewSyncProducer([]string{producerConf.Address}, sarama.NewConfig())
