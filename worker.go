@@ -29,7 +29,7 @@ func Work(ctx context.Context, workerIndex int, processFunc ProcessFunc, errCh c
 	}, workerNotifyChannel)
 
 	for {
-		if err := consumerGroup.Consume(ctx, []string{conf.KafkaSrc.Topic}, consumerGroupHandler); err == consumerNotify {
+		if err := consumerGroup.Consume(ctx, []string{kafkaSrc.Topic}, consumerGroupHandler); err == errConsumerNotify {
 			return
 		} else if err != nil {
 			logs.Printf("consume returns error: %v", err)

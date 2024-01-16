@@ -13,7 +13,7 @@ func initConsumer() error {
 	config.Version = sarama.V2_0_0_0
 	config.Consumer.Return.Errors = true
 
-	grp, err := sarama.NewConsumerGroup([]string{conf.KafkaSrc.Address}, conf.FunctionName, config)
+	grp, err := sarama.NewConsumerGroup([]string{kafkaSrc.Address}, conf.Name, config)
 	if err != nil {
 		return fmt.Errorf("initialize consumer failed: %v", err)
 	}
@@ -57,7 +57,7 @@ func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			session.MarkMessage(msg, "")
 		case notify := <-h.workerNotifyChannel:
 			if notify == "exit" {
-				return consumerNotify
+				return errConsumerNotify
 			}
 		}
 	}

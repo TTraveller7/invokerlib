@@ -9,7 +9,7 @@ import (
 
 func NewWorkerId(workerIndex int) string {
 	id := uuid.New()
-	fullName := fmt.Sprintf("w_%s_%d_%s", conf.FunctionName, workerIndex, id.String())
+	fullName := fmt.Sprintf("w_%s_%d_%s", conf.Name, workerIndex, id.String())
 	encodedName := base64.StdEncoding.EncodeToString([]byte(fullName))
 	return encodedName
 }
