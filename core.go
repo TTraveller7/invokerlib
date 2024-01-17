@@ -8,16 +8,11 @@ import (
 	"sync"
 )
 
+type InitFunc func()
 type ProcessFunc func(ctx context.Context, record *Record) error
 
 var (
-	initMut sync.Mutex
-
-	conf *ProcessorConfig
-
-	kafkaSrc *KafkaConfig
-
-	destNameToKafkaConfig map[string]*KafkaConfig
+	conf *InternalProcessorConfig
 
 	processFunc ProcessFunc
 	logs        *log.Logger
@@ -27,30 +22,48 @@ var (
 	wg                   *sync.WaitGroup
 )
 
-func Initialize(pf ProcessFunc) error {
-	canLock := initMut.TryLock()
-	if !canLock {
-		return fmt.Errorf("another process is holding the initialization lock")
-	}
-	defer initMut.Unlock()
-	if isInitialized() {
-		return fmt.Errorf("invokerlib is already initialized")
-	}
-
-	// prevent another routine from entering transition
-	resetFunc, err := startTransition()
+func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitFunc) error {
+	resetFunc, err := startTransition(functionStates.Initialized)
 	if err != nil {
-		return fmt.Errorf("start transition failed: %v", err)
+		err = fmt.Errorf("start transition failed: %v", err)
+		logs.Printf("%v\n", err)
+		return err
 	}
 	defer resetFunc()
 
-	// TODO: query conf from monitor
-	processFunc = pf
+	// validate and load internal processor config
+	if err := internalPc.Validate(); err != nil {
+		err = fmt.Errorf("validate internal processor config failed: %v", err)
+		logs.Printf("%v\n", err)
+		return err
+	}
+	conf = internalPc
+
+	// set logger
 	logs = log.New(os.Stdout, fmt.Sprintf("[%s] ", conf.Name), log.LstdFlags|log.Lshortfile)
+
+	// load processFunc
+	if pf == nil {
+		err = fmt.Errorf("processorFunc is not specified")
+		logs.Printf("%v", err)
+		return err
+	}
+	processFunc = pf
+
+	// call init if user has one
+	if initF != nil {
+		initF()
+	}
+
+	// create consumer and producers
 	if err := initConsumer(); err != nil {
+		err = fmt.Errorf("init consumer failed: %v", err)
+		logs.Printf("%v", err)
 		return err
 	}
 	if err := initProducers(); err != nil {
+		err = fmt.Errorf("init producers failed: %v", err)
+		logs.Printf("%v", err)
 		return err
 	}
 
@@ -59,20 +72,15 @@ func Initialize(pf ProcessFunc) error {
 	wg = &sync.WaitGroup{}
 
 	if err := transitToInitialized(); err != nil {
+		err = fmt.Errorf("transit to initialized failed: %v", err)
+		logs.Printf("%v", err)
 		return err
 	}
 	return nil
 }
 
-func Run(ctx context.Context) (err error) {
-	defer func() {
-		if recoverErr := recover(); recoverErr != nil {
-			err = fmt.Errorf("%v", recoverErr)
-			logs.Printf("exits with panic: %v", err)
-		}
-	}()
-
-	resetFunc, transitionErr := startTransition()
+func Run(ctx context.Context) error {
+	resetFunc, transitionErr := startTransition(functionStates.Running)
 	if transitionErr != nil {
 		return fmt.Errorf("start transition failed: %v", transitionErr)
 	}
@@ -88,20 +96,16 @@ func Run(ctx context.Context) (err error) {
 	}
 
 	if transitionErr := transitToRunning(); transitionErr != nil {
-		return transitionErr
+		err := fmt.Errorf("transit to running failed: %v", transitionErr)
+		logs.Printf("%v", err)
+		return err
 	}
 
-	return
+	return nil
 }
 
 func Exit() {
-	defer func() {
-		if recoverErr := recover(); recoverErr != nil {
-			logs.Printf("exits with panic: %v", recoverErr)
-		}
-	}()
-
-	resetFunc, transitionErr := startTransition()
+	resetFunc, transitionErr := startTransition(functionStates.Exited)
 	if transitionErr != nil {
 		logs.Printf("start transition failed: %v", transitionErr)
 		return

@@ -1,5 +1,5 @@
 processorConfigs: 
-  - parentDirectory: /home/svt/go/src/ttraveller7/invokerlib/example_word_count
+  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib/example_word_count
     files: 
     - go.mod
     - go.sum
@@ -11,7 +11,7 @@ processorConfigs:
       topic: ""
     outputConfig: 
       defaultOutputTopicPartitions: 1
-  - directory: /home/svt/go/src/ttraveller7/invokerlib/example_word_count
+  - directory: /home/svt/go/src/github.com/ttraveller7/invokerlib/example_word_count
     files: 
     - go.mod
     - go.sum

@@ -16,3 +16,33 @@ const (
 	REQUEST_KEY_COMMAND = "invoker_command"
 	REQUEST_KEY_PARAMS  = "invoker_params"
 )
+
+var MonitorCommands = struct {
+	LoadRootConfig string
+	CreateTopics   string
+}{
+	LoadRootConfig: "loadRootConfig",
+	CreateTopics:   "createTopics",
+}
+
+var ProcessorCommands = struct {
+	Initialize string
+	Run        string
+	Exit       string
+}{
+	Initialize: "initialize",
+	Run:        "run",
+	Exit:       "exit",
+}
+
+var processorStatus = struct {
+	Pending string
+	Up      string
+	Down    string
+}{
+	Pending: "Pending",
+	Up:      "Up",
+	Down:    "Down",
+}
+
+const MimeTypeJson = "application/json"

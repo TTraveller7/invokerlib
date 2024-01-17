@@ -51,10 +51,11 @@ type ProcessorConfig struct {
 }
 
 type OutputConfig struct {
-	// DefaultOutputTopicPartitions defines the number of partitions of the default output topic of the processor.
-	// If DefaultOutputTopicPartitions is set to 0, the default output topic of the processor will not be created.
-	DefaultOutputTopicPartitions int      `yaml:"defaultOutputTopicPartitions"`
-	OutputProcessors             []string `yaml:"outputProcessors"`
+	// DefaultTopicPartitions defines the number of partitions of the default output topic of the processor.
+	// If DefaultTopicPartitions is set to 0, the default topic of the processor will not be created.
+	DefaultTopicPartitions int `yaml:"defaultTopicPartitions"`
+
+	OutputProcessors []string `yaml:"outputProcessors"`
 
 	// OutputKafkaConfigs defines non-processor destinations. The name of a self-defined OutputKafkaConfig
 	// must not be the same as any of the processor names, and must be unique among all the OutputKafkaConfigs.
@@ -106,8 +107,8 @@ func (rc *RootConfig) Validate() error {
 		if pc.OutputConfig == nil {
 			return fmt.Errorf("output config is not specified for processor %s", name)
 		}
-		if pc.OutputConfig.DefaultOutputTopicPartitions < 0 {
-			return fmt.Errorf("DefaultOutputTopicPartitions must be greater than or equal to 0 for processor %s", name)
+		if pc.OutputConfig.DefaultTopicPartitions < 0 {
+			return fmt.Errorf("DefaultTopicPartitions must be greater than or equal to 0 for processor %s", name)
 		}
 	}
 	for _, pc := range rc.ProcessorConfigs {
@@ -118,11 +119,11 @@ func (rc *RootConfig) Validate() error {
 		okcNameSet := make(map[string]bool, 0)
 		for _, okc := range pc.OutputConfig.OutputKafkaConfigs {
 			if processorNameSet[okc.Name] {
-				return fmt.Errorf("OutputKafkaConfig name %s in processor %s is duplicated with processor names.",
+				return fmt.Errorf("OutputKafkaConfig name %s in processor %s is duplicated with processor names",
 					okc.Name, pc.Name)
 			}
 			if okcNameSet[okc.Name] {
-				return fmt.Errorf("OutputKafkaConfig name %s in processor %s is duplicated with another OutputKafkaConfig name.",
+				return fmt.Errorf("OutputKafkaConfig name %s in processor %s is duplicated with another OutputKafkaConfig name",
 					okc.Name, pc.Name)
 			}
 			okcNameSet[okc.Name] = true
@@ -133,5 +134,36 @@ func (rc *RootConfig) Validate() error {
 		return fmt.Errorf("global kafka config is missing")
 	}
 
+	return nil
+}
+
+type InternalProcessorConfig struct {
+	Name                         string                  `json:"name"`
+	GlobalKafkaConfig            *GlobalKafkaConfig      `json:"global_kafka_config"`
+	NumOfWorker                  int                     `json:"num_of_worker"`
+	InputKafkaConfig             *KafkaConfig            `json:"input_kafka_config"`
+	DefaultOutputTopicPartitions int                     `json:"default_output_topic_partitions"`
+	OutputKafkaConfigs           map[string]*KafkaConfig `json:"output_kafka_configs"`
+}
+
+func (ipc *InternalProcessorConfig) Validate() error {
+	if ipc.Name == "" {
+		return fmt.Errorf("processor name should not be empty")
+	}
+	if ipc.GlobalKafkaConfig == nil {
+		return fmt.Errorf("global kafka config should be nil")
+	}
+	if ipc.NumOfWorker == 0 {
+		return fmt.Errorf("number of worker should not be 0")
+	}
+	if ipc.InputKafkaConfig == nil {
+		return fmt.Errorf("input kafka config should not be nil")
+	}
+	if ipc.DefaultOutputTopicPartitions < 0 {
+		return fmt.Errorf("default output topic partitions should be 0 or greater")
+	}
+	if ipc.OutputKafkaConfigs == nil {
+		ipc.OutputKafkaConfigs = make(map[string]*KafkaConfig, 0)
+	}
 	return nil
 }

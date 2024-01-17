@@ -89,8 +89,8 @@ func Create() {
 
 	// create monitor http endpoint
 	err = Run("fission", "httptrigger", "create",
-		"--name", "monitor-load-root-config",
-		"--url", "/monitor/loadRootConfig",
+		"--name", "monitor",
+		"--url", "/monitor",
 		"--method", "POST",
 		"--function", "monitor")
 	if err != nil {
@@ -100,7 +100,7 @@ func Create() {
 	defer func() {
 		if !keepAliveOnFailure && !fissionStartSuccess {
 			Run("fission", "httptrigger", "delete",
-				"--name", "monitor-load-root-config")
+				"--name", "monitor")
 		}
 	}()
 
