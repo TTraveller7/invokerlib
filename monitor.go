@@ -13,32 +13,15 @@ import (
 )
 
 type ProcessorMetadata struct {
-	ProcessorName              string
-	ProcessorOutputKafkaConfig *KafkaConfig
-	Status                     string
-}
-
-var MonitorCommands = struct {
-	LoadRootConfig string
-	CreateTopics   string
-}{
-	LoadRootConfig: "loadRootConfig",
-	CreateTopics:   "createTopics",
-}
-
-var processorStatus = struct {
-	Pending string
-	Up      string
-	Down    string
-}{
-	Pending: "Pending",
-	Up:      "Up",
-	Down:    "Down",
+	Name   string
+	Status string
+	Client *ProcessorClient
 }
 
 var (
 	rootConfig        *RootConfig = &RootConfig{}
 	adminClient       sarama.ClusterAdmin
+	interimTopics     []*KafkaConfig                = make([]*KafkaConfig, 0)
 	processorMetadata map[string]*ProcessorMetadata = make(map[string]*ProcessorMetadata, 0)
 )
 
@@ -130,11 +113,12 @@ func createTopics() (*InvokerResponse, error) {
 		return nil, err
 	}
 
+	kafkaAddr := rootConfig.GlobalKafkaConfig.Address
 	adminConf := sarama.NewConfig()
 	adminConf.Version = sarama.V3_5_0_0
 
 	var err error
-	adminClient, err = sarama.NewClusterAdmin([]string{rootConfig.GlobalKafkaConfig.Address}, adminConf)
+	adminClient, err = sarama.NewClusterAdmin([]string{kafkaAddr}, adminConf)
 	if err != nil {
 		err = fmt.Errorf("create admin client failed: %v", err)
 		logs.Printf("%v", err)
@@ -143,7 +127,7 @@ func createTopics() (*InvokerResponse, error) {
 
 	// create topics
 	for _, pc := range rootConfig.ProcessorConfigs {
-		numOfPartitions := pc.OutputConfig.DefaultOutputTopicPartitions
+		numOfPartitions := pc.OutputConfig.DefaultTopicPartitions
 		if numOfPartitions == 0 {
 			// skip output topic creation of this processor
 			continue
@@ -169,10 +153,15 @@ func createTopics() (*InvokerResponse, error) {
 		}
 
 		meta := &ProcessorMetadata{
-			ProcessorName: processorName,
-			Status:        processorStatus.Pending,
+			Name:   processorName,
+			Status: processorStatus.Pending,
 		}
 		processorMetadata[processorName] = meta
+
+		interimTopics = append(interimTopics, &KafkaConfig{
+			Address: kafkaAddr,
+			Topic:   topicName,
+		})
 	}
 
 	logs.Printf("monitor create topics succeeds")
@@ -180,8 +169,8 @@ func createTopics() (*InvokerResponse, error) {
 }
 
 func removeTopics() (*InvokerResponse, error) {
-	for _, pmt := range processorMetadata {
-		if err := adminClient.DeleteTopic(pmt.ProcessorOutputKafkaConfig.Topic); err != nil {
+	for _, kc := range interimTopics {
+		if err := adminClient.DeleteTopic(kc.Topic); err != nil {
 			return nil, err
 		}
 	}

@@ -13,7 +13,7 @@ func initConsumer() error {
 	config.Version = sarama.V2_0_0_0
 	config.Consumer.Return.Errors = true
 
-	grp, err := sarama.NewConsumerGroup([]string{kafkaSrc.Address}, conf.Name, config)
+	grp, err := sarama.NewConsumerGroup([]string{conf.InputKafkaConfig.Address}, conf.Name, config)
 	if err != nil {
 		return fmt.Errorf("initialize consumer failed: %v", err)
 	}

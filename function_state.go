@@ -23,25 +23,25 @@ var functionStates = struct {
 }
 
 var allowedTransitions = map[functionState][]functionState{
-	functionStates.Created: []functionState{
+	functionStates.Created: {
 		functionStates.Initialized,
 	},
-	functionStates.Initialized: []functionState{
+	functionStates.Initialized: {
 		functionStates.Running,
 	},
-	functionStates.Running: []functionState{
+	functionStates.Running: {
 		functionStates.Paused,
 		functionStates.Exited,
 	},
-	functionStates.Paused: []functionState{
+	functionStates.Paused: {
 		functionStates.Running,
 		functionStates.Exited,
 	},
-	functionStates.Exited: []functionState{},
+	functionStates.Exited: {},
 }
 
 var (
-	// DO NOT directly read this variable
+	// DO NOT directly read this variable. Use getState().
 	state     functionState = functionStates.Created
 	stateLock sync.RWMutex
 
@@ -91,23 +91,28 @@ func transitTo(dest functionState) error {
 }
 
 // startTransition tries to start a transition of current state.
-func startTransition() (func(), error) {
+func startTransition(targetState functionState) (func(), error) {
 	if swapped := transitioning.CompareAndSwap(false, true); !swapped {
 		return nil, fmt.Errorf("another routine is transitioning")
-	} else {
-		return resetTransition, nil
 	}
+
+	currState, _ := getState()
+	for srcState, destStates := range allowedTransitions {
+		if currState != srcState {
+			continue
+		}
+		for _, destState := range destStates {
+			if destState == targetState {
+				return resetTransition, nil
+			}
+		}
+	}
+
+	resetTransition()
+	return nil, fmt.Errorf("transition to target state is not allowed: currState=%v, targetState=%s",
+		currState, targetState)
 }
 
 func resetTransition() {
 	transitioning.Store(false)
-}
-
-func isInitialized() bool {
-	s, transitioning := getState()
-	if transitioning {
-		return false
-	} else {
-		return s == functionStates.Initialized
-	}
 }
