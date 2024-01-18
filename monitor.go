@@ -106,7 +106,7 @@ func loadRootConfig(req *InvokerRequest) (*InvokerResponse, error) {
 		return nil, err
 	}
 
-	logs.Printf("monitor load root config finshed")
+	logs.Printf("monitor load root config finished")
 	return successResponse(), nil
 }
 
@@ -214,7 +214,7 @@ func loadProcessorEndpoints(req *InvokerRequest) (*InvokerResponse, error) {
 		}
 	}
 
-	logs.Printf("monitor load processor endpoints finshed")
+	logs.Printf("monitor load processor endpoints finished")
 	return successResponse(), nil
 }
 
@@ -239,6 +239,6 @@ func initializeProcessors() (*InvokerResponse, error) {
 		logs.Printf("processor initialize finished with resp: %+v", resp)
 	}
 
-	logs.Printf("monitor initialize processors finshed")
+	logs.Printf("monitor initialize processors finished")
 	return successResponse(), nil
 }

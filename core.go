@@ -38,6 +38,8 @@ func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitF
 		return err
 	}
 	conf = internalPc
+	logs.Printf("internalProcessorConfig:")
+	logs.Printf("%s", SafeJsonIndent(conf))
 
 	// set logger
 	logs = log.New(os.Stdout, fmt.Sprintf("[%s] ", conf.Name), log.LstdFlags|log.Lshortfile)
@@ -61,11 +63,13 @@ func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitF
 		logs.Printf("%v", err)
 		return err
 	}
+	logs.Printf("consumer starts")
 	if err := initProducers(); err != nil {
 		err = fmt.Errorf("init producers failed: %v", err)
 		logs.Printf("%v", err)
 		return err
 	}
+	logs.Printf("producers start")
 
 	workerNotifyChannels = make([]chan<- string, 0)
 	errCh = make(chan error, conf.NumOfWorker)

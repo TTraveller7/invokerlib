@@ -13,3 +13,14 @@ func MarshalToReader(s any) (io.Reader, error) {
 	}
 	return bytes.NewReader(sBytes), nil
 }
+
+func SafeJsonIndent(s any) string {
+	if s == nil {
+		return ""
+	}
+	marshalledS, err := json.MarshalIndent(s, "", "\t")
+	if err != nil {
+		return ""
+	}
+	return string(marshalledS)
+}

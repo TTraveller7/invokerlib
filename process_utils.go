@@ -66,6 +66,7 @@ func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, ini
 }
 
 func handleInitialize(req *InvokerRequest, pf ProcessFunc, initF InitFunc) (*InvokerResponse, error) {
+	logs.Printf("handle initialize starts")
 	ipc := &InternalProcessorConfig{}
 	if err := UnmarshalParams(req.Params, ipc); err != nil {
 		err = fmt.Errorf("unmarshal params failed: %v", err)
@@ -78,6 +79,7 @@ func handleInitialize(req *InvokerRequest, pf ProcessFunc, initF InitFunc) (*Inv
 		logs.Printf("%v", err)
 		return nil, err
 	}
+	logs.Printf("handle initialize finished")
 	return successResponse(), nil
 }
 
