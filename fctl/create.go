@@ -154,15 +154,39 @@ func Create() {
 			logs.Printf("create processor %s failed: %v", name, err)
 			return
 		}
-
-		time.Sleep(10 * time.Second)
-
 		defer func() {
 			if !keepAliveOnFailure && !fissionStartSuccess {
 				Run("fission", "fn", "delete",
 					"--name", name)
 			}
 		}()
+
+		// create processor http endpoint
+		err = Run("fission", "httptrigger", "create",
+			"--name", name,
+			"--url", "/"+name,
+			"--method", "POST",
+			"--function", name)
+		if err != nil {
+			logs.Printf("create monitor httptrigger failed: %v", err)
+			return
+		}
+		defer func() {
+			if !keepAliveOnFailure && !fissionStartSuccess {
+				Run("fission", "httptrigger", "delete",
+					"--name", name)
+			}
+		}()
+
+		pc := NewProcessorClient(name)
+		resp, err := pc.Ping()
+		if err != nil {
+			logs.Printf("ping processor client %s failed: %v", name, err)
+			return
+		} else if resp.Code != invokerlib.ResponseCodes.Success {
+			logs.Printf("ping processor client %s failed with resp: %+v", name, resp)
+			return
+		}
 	}
 
 	// gather k8s services of processors, pass the IPs to monitor

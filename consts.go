@@ -33,10 +33,12 @@ var ProcessorCommands = struct {
 	Initialize string
 	Run        string
 	Exit       string
+	Ping       string
 }{
 	Initialize: "initialize",
 	Run:        "run",
 	Exit:       "exit",
+	Ping:       "ping",
 }
 
 var processorStatus = struct {
