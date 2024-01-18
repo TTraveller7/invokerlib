@@ -34,6 +34,9 @@ type ProcessorConfig struct {
 	// If ParentDirectory is not empty, the file paths will be treate as paths relative to parent directory.
 	Files []string `yaml:"files"`
 
+	// EntryPoint is the entry point function of the processor.
+	EntryPoint string `yaml:"entryPoint"`
+
 	// Name is the name of the processor, which should be unique among all processors in a config.
 	Name string `yaml:"name"`
 
@@ -93,7 +96,13 @@ func (rc *RootConfig) Validate() error {
 	}
 	processorNameSet := make(map[string]bool, 0)
 	for _, pc := range rc.ProcessorConfigs {
+		if pc.Name == "" {
+			return fmt.Errorf("processor name cannot be empty")
+		}
 		name := pc.Name
+		if pc.EntryPoint == "" {
+			return fmt.Errorf("processor %s entrypoint cannot be empty", name)
+		}
 		if processorNameSet[name] {
 			return fmt.Errorf("duplicate processor name %s", name)
 		}

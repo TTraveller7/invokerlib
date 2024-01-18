@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
+	"strings"
 
 	"github.com/IBM/sarama"
 )
@@ -75,6 +76,10 @@ func monitorHandle(req *InvokerRequest) (*InvokerResponse, error) {
 		return loadRootConfig(req)
 	case MonitorCommands.CreateTopics:
 		return createTopics()
+	case MonitorCommands.LoadProcessorEndpoints:
+		return loadProcessorEndpoints(req)
+	case MonitorCommands.InitializeProcessors:
+		return initializeProcessors()
 	default:
 		err := fmt.Errorf("unrecognized command %v", req.Command)
 		logs.Printf("%v", err)
@@ -174,5 +179,66 @@ func removeTopics() (*InvokerResponse, error) {
 			return nil, err
 		}
 	}
+	return successResponse(), nil
+}
+
+func loadProcessorEndpoints(req *InvokerRequest) (*InvokerResponse, error) {
+	logs.Printf("monitor load processor endpoints starts")
+	if req.Params == nil {
+		err := fmt.Errorf("no params is found for command %v", MonitorCommands.LoadProcessorEndpoints)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	p := &LoadProcessorEndpointsParams{}
+	if err := UnmarshalParams(req.Params, p); err != nil {
+		err := fmt.Errorf("unmarshal loadProcessorEndpoints params failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	for name, metadata := range processorMetadata {
+		for _, endpoint := range p.Endpoints {
+			if strings.Contains(endpoint, name) {
+				metadata.Client = NewProcessorClient(name, endpoint)
+				break
+			}
+		}
+	}
+
+	for name, metadata := range processorMetadata {
+		if metadata.Client == nil {
+			err := fmt.Errorf("processor %s endpoint not found in request", name)
+			logs.Printf("%v", err)
+			return nil, err
+		}
+	}
+
+	logs.Printf("monitor load processor endpoints finshed")
+	return successResponse(), nil
+}
+
+func initializeProcessors() (*InvokerResponse, error) {
+	logs.Printf("monitor initialize processors starts")
+	for _, metadata := range processorMetadata {
+		if metadata.Client == nil {
+			err := fmt.Errorf("processor %s client is not initialized", metadata.Name)
+			logs.Printf("%v", err)
+			return nil, err
+		}
+		resp, err := metadata.Client.Initialize()
+		if err != nil {
+			err = fmt.Errorf("processor initialize failed: %v", err)
+			logs.Printf("%v", err)
+			return nil, err
+		} else if resp.Code != ResponseCodes.Success {
+			err = fmt.Errorf("processor initialize failed with resp: %+v", resp)
+			logs.Printf("%v", err)
+			return nil, err
+		}
+		logs.Printf("processor initialize finished with resp: %+v", resp)
+	}
+
+	logs.Printf("monitor initialize processors finshed")
 	return successResponse(), nil
 }
