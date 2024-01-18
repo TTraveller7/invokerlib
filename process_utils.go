@@ -54,6 +54,9 @@ func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, ini
 	switch req.Command {
 	case ProcessorCommands.Initialize:
 		resp, handleErr = handleInitialize(req, pf, initF)
+	case ProcessorCommands.Ping:
+		resp = successResponse()
+		resp.Message = "pong"
 	default:
 		err = fmt.Errorf("unrecognized command %s", req.Command)
 		logs.Printf("%v", err)
