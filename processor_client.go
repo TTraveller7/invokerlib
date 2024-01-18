@@ -24,5 +24,6 @@ func (pc *ProcessorClient) Initialize() (*InvokerResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	logs.Printf("processor %s client got response for initialize:\n%s", pc.ProcessorName, SafeJsonIndent(resp))
 	return resp, nil
 }
