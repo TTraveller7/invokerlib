@@ -58,3 +58,12 @@ func (m *MonitorClient) LoadProcessorEndpoints(p *invokerlib.LoadProcessorEndpoi
 	}
 	return resp, nil
 }
+
+func (m *MonitorClient) InitializeProcessors() (*invokerlib.InvokerResponse, error) {
+	params := make(map[string]any, 0)
+	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.InitializeProcessors)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
