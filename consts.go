@@ -18,11 +18,15 @@ const (
 )
 
 var MonitorCommands = struct {
-	LoadRootConfig string
-	CreateTopics   string
+	LoadRootConfig         string
+	CreateTopics           string
+	LoadProcessorEndpoints string
+	InitializeProcessors   string
 }{
-	LoadRootConfig: "loadRootConfig",
-	CreateTopics:   "createTopics",
+	LoadRootConfig:         "loadRootConfig",
+	CreateTopics:           "createTopics",
+	LoadProcessorEndpoints: "loadProcessorEndpoints",
+	InitializeProcessors:   "initializeProcessors",
 }
 
 var ProcessorCommands = struct {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/TTraveller7/invokerlib"
@@ -131,6 +132,70 @@ func Create() {
 		return
 	}
 	logs.Printf("createTopics finished with resp: %+v", resp)
+
+	// create processors
+	logs.Printf("create processors")
+	for _, processorConf := range invokerConfig.ProcessorConfigs {
+		name := processorConf.Name
+		cmd := []string{"fission", "fn", "create",
+			"--name", name,
+			"--env", FissionEnv,
+			"--entrypoint", processorConf.EntryPoint,
+			"--executortype", "newdeploy",
+			"--minscale", "1",
+			"--maxscale", "1",
+		}
+		for _, file := range processorConf.Files {
+			cmd = append(cmd, "--src")
+			cmd = append(cmd, ConcatPath(processorConf.ParentDirectory, file))
+		}
+		err = Run(cmd...)
+		if err != nil {
+			logs.Printf("create processor %s failed: %v", name, err)
+			return
+		}
+
+		time.Sleep(10 * time.Second)
+
+		defer func() {
+			if !keepAliveOnFailure && !fissionStartSuccess {
+				Run("fission", "fn", "delete",
+					"--name", name)
+			}
+		}()
+	}
+
+	// gather k8s services of processors, pass the IPs to monitor
+	output, err := Exec("kubectl", "get", "svc",
+		"-o", "name")
+	if err != nil {
+		logs.Printf("get k8s service failed: %v", err)
+		return
+	}
+	output = strings.Trim(output, "\n")
+	splittedOutput := strings.Split(output, "\n")
+	serviceNames := make([]string, 0)
+	for _, svcName := range splittedOutput {
+		if strings.Contains(svcName, "newdeploy-") {
+			n := strings.TrimPrefix(svcName, "service/")
+			serviceNames = append(serviceNames, n)
+		}
+	}
+
+	// pass endpoints to monitor
+	p := &invokerlib.LoadProcessorEndpointsParams{
+		Endpoints: serviceNames,
+	}
+	logs.Printf("sending command loadProcessorEndpoints to monitor")
+	resp, err = cli.LoadProcessorEndpoints(p)
+	if err != nil {
+		logs.Printf("loadProcessorEndpoints failed: %v", err)
+		return
+	} else if resp.Code != invokerlib.ResponseCodes.Success {
+		logs.Printf("loadProcessorEndpoints failed with resp: %+v", resp)
+		return
+	}
+	logs.Printf("loadProcessorEndpoints finished with resp: %+v", resp)
 
 	fissionStartSuccess = true
 }

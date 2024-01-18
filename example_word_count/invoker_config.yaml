@@ -1,26 +1,26 @@
 processorConfigs: 
-  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib/example_word_count
+  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/word_count
     files: 
     - go.mod
     - go.sum
     - splitter.go
+    entryPoint: "SplitterHandler"
     name: "splitter"
     numOfWorker: 1
     inputKafkaConfig: 
-      address: ""
-      topic: ""
+      address: "kafka:9092"
+      topic: "word_count_source"
     outputConfig: 
       defaultOutputTopicPartitions: 1
-  - directory: /home/svt/go/src/github.com/ttraveller7/invokerlib/example_word_count
+  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/word_count
     files: 
     - go.mod
     - go.sum
     - counter.go
+    entryPoint: "CounterHandler"
     name: "counter"
     numOfWorker: 1
-    inputKafkaConfig: 
-      address: ""
-      topic: ""
+    inputProcessor: "splitter"
     outputConfig: 
       defaultOutputTopicPartitions: 0
 

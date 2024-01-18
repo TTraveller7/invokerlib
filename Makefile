@@ -1,6 +1,8 @@
 INSTALL_PATH=/opt/svt/bin/fctl
 
-all: clean cleanfission cleank8s applyk8s build install
+all: cleanall applyk8s build install
+
+cleanall: clean cleanfission cleank8s
 
 clean:
 	mkdir -p target 
@@ -9,8 +11,10 @@ clean:
 
 cleanfission:
 	fission fn delete --name "monitor" --ignorenotfound
-	fission env delete --name "invoker" --ignorenotfound
 	-fission httptrigger delete --name "monitor" --ignorenotfound
+	fission fn delete --name "splitter" --ignorenotfound
+	fission fn delete --name "counter" --ignorenotfound
+	fission env delete --name "invoker" --ignorenotfound
 
 cleank8s: 
 	kubectl delete -f k8s_yaml --ignore-not-found=true
