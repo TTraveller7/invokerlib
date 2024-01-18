@@ -15,7 +15,7 @@ var (
 	conf *InternalProcessorConfig
 
 	processFunc ProcessFunc
-	logs        *log.Logger
+	logs        *log.Logger = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
 
 	workerNotifyChannels []chan<- string
 	errCh                chan error

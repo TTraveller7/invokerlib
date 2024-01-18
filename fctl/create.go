@@ -178,6 +178,8 @@ func Create() {
 			}
 		}()
 
+		time.Sleep(3 * time.Second)
+
 		pc := NewProcessorClient(name)
 		resp, err := pc.Ping()
 		if err != nil {

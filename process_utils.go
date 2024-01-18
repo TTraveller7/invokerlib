@@ -5,19 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"os"
 	"runtime/debug"
 
 	"github.com/IBM/sarama"
 )
 
 func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, initF InitFunc) {
-	if logs == nil {
-		logs = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
-	}
-
 	resp := &InvokerResponse{}
 	var err error
 	defer func() {
@@ -49,6 +43,7 @@ func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, ini
 		logs.Printf("%v", err)
 		return
 	}
+	logs.Printf("received request:\n%s", string(SafeJsonIndent(req)))
 
 	var handleErr error
 	switch req.Command {
