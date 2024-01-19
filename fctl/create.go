@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -46,7 +47,7 @@ func Create() {
 		return
 	}
 
-	fissionStartSuccess := false
+	fissionStartSuccess := true
 
 	// create fission env
 	err = Run("fission", "env", "create",
@@ -105,7 +106,7 @@ func Create() {
 		}
 	}()
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	cli := NewMonitorClient()
 
@@ -178,7 +179,7 @@ func Create() {
 			}
 		}()
 
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 
 		pc := NewProcessorClient(name)
 		resp, err := pc.Ping()
@@ -204,6 +205,7 @@ func Create() {
 	for _, svcName := range splittedOutput {
 		if strings.Contains(svcName, "newdeploy-") {
 			n := strings.TrimPrefix(svcName, "service/")
+			n = fmt.Sprintf("http://%s", n)
 			serviceNames = append(serviceNames, n)
 		}
 	}

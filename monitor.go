@@ -157,17 +157,20 @@ func createTopics() (*InvokerResponse, error) {
 			}
 		}
 
-		meta := &ProcessorMetadata{
-			Name:   processorName,
-			Status: processorStatus.Pending,
-		}
-		processorMetadata[processorName] = meta
-
 		interimTopics = append(interimTopics, &KafkaConfig{
 			Address: kafkaAddr,
 			Topic:   topicName,
 		})
 	}
+
+	for _, pc := range rootConfig.ProcessorConfigs {
+		meta := &ProcessorMetadata{
+			Name:   pc.Name,
+			Status: processorStatus.Pending,
+		}
+		processorMetadata[pc.Name] = meta
+	}
+	logs.Printf("processorMetadata:\n%s", SafeJsonIndent(processorMetadata))
 
 	logs.Printf("monitor create topics succeeds")
 	return successResponse(), nil
