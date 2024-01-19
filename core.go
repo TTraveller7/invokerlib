@@ -20,6 +20,7 @@ var (
 	workerNotifyChannels []chan<- string
 	errCh                chan error
 	wg                   *sync.WaitGroup
+	processorCtx         context.Context
 )
 
 func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitFunc) error {
@@ -83,16 +84,23 @@ func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitF
 	return nil
 }
 
-func Run(ctx context.Context) error {
+func Run() error {
 	resetFunc, transitionErr := startTransition(functionStates.Running)
 	if transitionErr != nil {
 		return fmt.Errorf("start transition failed: %v", transitionErr)
 	}
 	defer resetFunc()
 
+	if processorCtx != nil {
+		err := fmt.Errorf("processor context is already initialized")
+		logs.Printf("%v", err)
+		return err
+	}
+	processorCtx = context.Background()
+
 	for i := 0; i < conf.NumOfWorker; i++ {
 		wg.Add(1)
-		workerCtx := NewWorkerContext(ctx, i)
+		workerCtx := NewWorkerContext(processorCtx, i)
 		// TODO: block or non-block?
 		workerNotifyChannel := make(chan string, 10)
 		workerNotifyChannels = append(workerNotifyChannels, workerNotifyChannel)

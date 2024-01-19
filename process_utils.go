@@ -52,6 +52,8 @@ func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, ini
 	case ProcessorCommands.Ping:
 		resp = successResponse()
 		resp.Message = "pong"
+	case ProcessorCommands.Run:
+		resp, handleErr = handleRun()
 	default:
 		err = fmt.Errorf("unrecognized command %s", req.Command)
 		logs.Printf("%v", err)
@@ -78,6 +80,17 @@ func handleInitialize(req *InvokerRequest, pf ProcessFunc, initF InitFunc) (*Inv
 		return nil, err
 	}
 	logs.Printf("handle initialize finished")
+	return successResponse(), nil
+}
+
+func handleRun() (*InvokerResponse, error) {
+	logs.Printf("handle run starts")
+	if err := Run(); err != nil {
+		err = fmt.Errorf("Run failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	logs.Printf("handle run finished")
 	return successResponse(), nil
 }
 

@@ -67,3 +67,12 @@ func (m *MonitorClient) InitializeProcessors() (*invokerlib.InvokerResponse, err
 	}
 	return resp, nil
 }
+
+func (m *MonitorClient) RunProcessors() (*invokerlib.InvokerResponse, error) {
+	params := make(map[string]any, 0)
+	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.RunProcessors)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

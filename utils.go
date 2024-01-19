@@ -24,3 +24,7 @@ func SafeJsonIndent(s any) string {
 	}
 	return string(marshalledS)
 }
+
+func NewInvokerRequestParams() map[string]any {
+	return make(map[string]any, 0)
+}

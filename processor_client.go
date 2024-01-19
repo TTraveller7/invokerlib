@@ -87,6 +87,13 @@ func (pc *ProcessorClient) Initialize() (*InvokerResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	logs.Printf("processor %s client got response for initialize:\n%s", pc.ProcessorName, SafeJsonIndent(resp))
+	return resp, nil
+}
+
+func (pc *ProcessorClient) Run() (*InvokerResponse, error) {
+	resp, err := pc.SendCommand(NewInvokerRequestParams(), ProcessorCommands.Run)
+	if err != nil {
+		return nil, err
+	}
 	return resp, nil
 }

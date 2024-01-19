@@ -22,11 +22,13 @@ var MonitorCommands = struct {
 	CreateTopics           string
 	LoadProcessorEndpoints string
 	InitializeProcessors   string
+	RunProcessors          string
 }{
 	LoadRootConfig:         "loadRootConfig",
 	CreateTopics:           "createTopics",
 	LoadProcessorEndpoints: "loadProcessorEndpoints",
 	InitializeProcessors:   "initializeProcessors",
+	RunProcessors:          "runProcessors",
 }
 
 var ProcessorCommands = struct {
