@@ -11,7 +11,7 @@ processorConfigs:
       address: "kafka:9092"
       topic: "word_count_source"
     outputConfig: 
-      defaultOutputTopicPartitions: 1
+      defaultTopicPartitions: 1
   - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/word_count
     files: 
     - go.mod
@@ -22,7 +22,7 @@ processorConfigs:
     numOfWorker: 1
     inputProcessor: "splitter"
     outputConfig: 
-      defaultOutputTopicPartitions: 0
+      defaultTopicPartitions: 0
 
 globalKafkaConfig: 
   address: "kafka:9092"
