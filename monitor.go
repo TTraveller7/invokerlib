@@ -80,6 +80,8 @@ func monitorHandle(req *InvokerRequest) (*InvokerResponse, error) {
 		return loadProcessorEndpoints(req)
 	case MonitorCommands.InitializeProcessors:
 		return initializeProcessors()
+	case MonitorCommands.RunProcessors:
+		return runProcessors()
 	default:
 		err := fmt.Errorf("unrecognized command %v", req.Command)
 		logs.Printf("%v", err)
@@ -243,5 +245,30 @@ func initializeProcessors() (*InvokerResponse, error) {
 	}
 
 	logs.Printf("monitor initialize processors finished")
+	return successResponse(), nil
+}
+
+func runProcessors() (*InvokerResponse, error) {
+	logs.Printf("monitor run processors starts")
+	for _, metadata := range processorMetadata {
+		if metadata.Client == nil {
+			err := fmt.Errorf("processor %s client is not initialized", metadata.Name)
+			logs.Printf("%v", err)
+			return nil, err
+		}
+		resp, err := metadata.Client.Run()
+		if err != nil {
+			err = fmt.Errorf("processor run failed: %v", err)
+			logs.Printf("%v", err)
+			return nil, err
+		} else if resp.Code != ResponseCodes.Success {
+			err = fmt.Errorf("processor run failed with resp: %+v", resp)
+			logs.Printf("%v", err)
+			return nil, err
+		}
+		logs.Printf("processor run finished with resp: %+v", resp)
+	}
+
+	logs.Printf("monitor run processors finished")
 	return successResponse(), nil
 }

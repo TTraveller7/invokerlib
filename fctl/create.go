@@ -237,5 +237,17 @@ func Create() {
 	}
 	logs.Printf("initializeProcessors finished with resp: %+v", resp)
 
+	// run processors
+	logs.Printf("sending command runProcessors to monitor")
+	resp, err = cli.RunProcessors()
+	if err != nil {
+		logs.Printf("runProcessors failed: %v", err)
+		return
+	} else if resp.Code != invokerlib.ResponseCodes.Success {
+		logs.Printf("runProcessors failed with resp: %+v", resp)
+		return
+	}
+	logs.Printf("runProcessors finished with resp: %+v", resp)
+
 	fissionStartSuccess = true
 }
