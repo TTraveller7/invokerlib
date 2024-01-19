@@ -29,17 +29,17 @@ func initProducers() error {
 	// one sarama producer per address
 	addrToSaramaProducer := make(map[string]sarama.SyncProducer, 0)
 
-	// create producer that push to default topic
-	if conf.DefaultOutputTopicPartitions > 0 {
-		addr := conf.GlobalKafkaConfig.Address
-		saramaProducer, err := sarama.NewSyncProducer([]string{addr}, sarama.NewConfig())
+	producerConfig := sarama.NewConfig()
+	producerConfig.Producer.Return.Successes = true
+
+	if conf.DefaultOutputKafkaConfig != nil {
+		saramaProducer, err := sarama.NewSyncProducer([]string{conf.DefaultOutputKafkaConfig.Address}, producerConfig)
 		if err != nil {
 			return fmt.Errorf("initialize producer failed: %v", err)
 		}
-		addrToSaramaProducer[addr] = saramaProducer
 		dp = &Producer{
-			saramaProducer: addrToSaramaProducer[addr],
-			topic:          conf.Name,
+			saramaProducer: saramaProducer,
+			topic:          conf.DefaultOutputKafkaConfig.Topic,
 		}
 	}
 
@@ -47,7 +47,7 @@ func initProducers() error {
 	for _, producerConf := range conf.OutputKafkaConfigs {
 		if _, exists := addrToSaramaProducer[producerConf.Address]; !exists {
 			// create sarama producer
-			saramaProducer, err := sarama.NewSyncProducer([]string{producerConf.Address}, sarama.NewConfig())
+			saramaProducer, err := sarama.NewSyncProducer([]string{producerConf.Address}, producerConfig)
 			if err != nil {
 				return fmt.Errorf("initialize producer failed: %v", err)
 			}

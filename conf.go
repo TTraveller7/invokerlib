@@ -147,12 +147,12 @@ func (rc *RootConfig) Validate() error {
 }
 
 type InternalProcessorConfig struct {
-	Name                         string                  `json:"name"`
-	GlobalKafkaConfig            *GlobalKafkaConfig      `json:"global_kafka_config"`
-	NumOfWorker                  int                     `json:"num_of_worker"`
-	InputKafkaConfig             *KafkaConfig            `json:"input_kafka_config"`
-	DefaultOutputTopicPartitions int                     `json:"default_output_topic_partitions"`
-	OutputKafkaConfigs           map[string]*KafkaConfig `json:"output_kafka_configs"`
+	Name                     string                  `json:"name"`
+	GlobalKafkaConfig        *GlobalKafkaConfig      `json:"global_kafka_config"`
+	NumOfWorker              int                     `json:"num_of_worker"`
+	InputKafkaConfig         *KafkaConfig            `json:"input_kafka_config"`
+	DefaultOutputKafkaConfig *KafkaConfig            `json:"default_output_kafka_config"`
+	OutputKafkaConfigs       map[string]*KafkaConfig `json:"output_kafka_configs"`
 }
 
 func (ipc *InternalProcessorConfig) Validate() error {
@@ -167,9 +167,6 @@ func (ipc *InternalProcessorConfig) Validate() error {
 	}
 	if ipc.InputKafkaConfig == nil {
 		return fmt.Errorf("input kafka config should not be nil")
-	}
-	if ipc.DefaultOutputTopicPartitions < 0 {
-		return fmt.Errorf("default output topic partitions should be 0 or greater")
 	}
 	if ipc.OutputKafkaConfigs == nil {
 		ipc.OutputKafkaConfigs = make(map[string]*KafkaConfig, 0)

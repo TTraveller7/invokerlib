@@ -36,7 +36,6 @@ func (pc *ProcessorClient) Initialize() (*InvokerResponse, error) {
 		}
 
 		ipc.NumOfWorker = processConfig.NumOfWorker
-		ipc.DefaultOutputTopicPartitions = processConfig.OutputConfig.DefaultTopicPartitions
 
 		if processConfig.InputKafkaConfig != nil {
 			ipc.InputKafkaConfig = processConfig.InputKafkaConfig
@@ -44,6 +43,13 @@ func (pc *ProcessorClient) Initialize() (*InvokerResponse, error) {
 			ipc.InputKafkaConfig = &KafkaConfig{
 				Address: kafkaAddr,
 				Topic:   processConfig.InputProcessor,
+			}
+		}
+
+		if processConfig.OutputConfig.DefaultTopicPartitions > 0 {
+			ipc.DefaultOutputKafkaConfig = &KafkaConfig{
+				Address: kafkaAddr,
+				Topic:   processConfig.Name,
 			}
 		}
 
