@@ -38,3 +38,11 @@ func (r *RedisStateStore) Delete(ctx context.Context, key string) error {
 	}
 	return nil
 }
+
+func (r *RedisStateStore) Keys(ctx context.Context) ([]string, error) {
+	keys, err := r.cli.Keys(ctx, "*").Result()
+	if err != nil {
+		return nil, err
+	}
+	return keys, nil
+}
