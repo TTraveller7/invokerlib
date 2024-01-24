@@ -7,6 +7,10 @@ type InvokerRequest struct {
 	Params  map[string]any `json:"params"`
 }
 
+func NewInvokerRequestParams() map[string]any {
+	return make(map[string]any, 0)
+}
+
 func UnmarshalParams(params map[string]any, dest any) error {
 	marshalledParams, err := json.Marshal(params)
 	if err != nil {

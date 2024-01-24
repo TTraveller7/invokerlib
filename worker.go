@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-func Work(ctx context.Context, workerIndex int, processFunc ProcessFunc, errCh chan<- error, wg *sync.WaitGroup, workerNotifyChannel <-chan string) {
+func Work(ctx context.Context, workerIndex int, processFunc ProcessCallback, errCh chan<- error, wg *sync.WaitGroup, workerNotifyChannel <-chan string) {
 	logs := log.New(os.Stdout, fmt.Sprintf("[worker #%v] ", workerIndex), log.LstdFlags|log.Lshortfile)
 	defer func() {
 		if recoverErr := recover(); recoverErr != nil {

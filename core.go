@@ -8,14 +8,21 @@ import (
 	"sync"
 )
 
-type InitFunc func()
-type ProcessFunc func(ctx context.Context, record *Record) error
+type InitCallback func()
+type ProcessCallback func(ctx context.Context, record *Record) error
+type ExitCallback func()
+
+type ProcessorCallbacks struct {
+	OnInit  InitCallback
+	Process ProcessCallback
+	OnExit  ExitCallback
+}
 
 var (
 	conf *InternalProcessorConfig
 
-	processFunc ProcessFunc
-	logs        *log.Logger = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
+	processorCallbacks *ProcessorCallbacks
+	logs               *log.Logger = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
 
 	workerNotifyChannels []chan<- string
 	errCh                chan error
@@ -23,7 +30,7 @@ var (
 	processorCtx         context.Context
 )
 
-func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitFunc) error {
+func Initialize(internalPc *InternalProcessorConfig, pc *ProcessorCallbacks) error {
 	resetFunc, err := startTransition(functionStates.Initialized)
 	if err != nil {
 		err = fmt.Errorf("start transition failed: %v", err)
@@ -39,24 +46,28 @@ func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitF
 		return err
 	}
 	conf = internalPc
-	logs.Printf("internalProcessorConfig:")
-	logs.Printf("%s", SafeJsonIndent(conf))
+	logs.Printf("internalProcessorConfig: %s", SafeJsonIndent(conf))
 
 	// set logger
 	logs = log.New(os.Stdout, fmt.Sprintf("[%s] ", conf.Name), log.LstdFlags|log.Lshortfile)
 
+	processorCtx = context.Background()
+	workerNotifyChannels = make([]chan<- string, 0)
+	errCh = make(chan error, conf.NumOfWorker)
+	wg = &sync.WaitGroup{}
+
 	// load processFunc
-	if pf == nil {
-		err = fmt.Errorf("processorFunc is not specified")
+	if pc == nil {
+		err = fmt.Errorf("processor callbacks are not specified")
 		logs.Printf("%v", err)
 		return err
 	}
-	processFunc = pf
-
-	// call init if user has one
-	if initF != nil {
-		initF()
+	if pc.Process == nil {
+		err = fmt.Errorf("process in processor callbacks is not specified")
+		logs.Printf("%v", err)
+		return err
 	}
+	processorCallbacks = pc
 
 	// create consumer and producers
 	if err := initConsumer(); err != nil {
@@ -72,9 +83,10 @@ func Initialize(internalPc *InternalProcessorConfig, pf ProcessFunc, initF InitF
 	}
 	logs.Printf("producers start")
 
-	workerNotifyChannels = make([]chan<- string, 0)
-	errCh = make(chan error, conf.NumOfWorker)
-	wg = &sync.WaitGroup{}
+	// call OnInit if user has one
+	if processorCallbacks.OnInit != nil {
+		processorCallbacks.OnInit()
+	}
 
 	if err := transitToInitialized(); err != nil {
 		err = fmt.Errorf("transit to initialized failed: %v", err)
@@ -91,20 +103,13 @@ func Run() error {
 	}
 	defer resetFunc()
 
-	if processorCtx != nil {
-		err := fmt.Errorf("processor context is already initialized")
-		logs.Printf("%v", err)
-		return err
-	}
-	processorCtx = context.Background()
-
 	for i := 0; i < conf.NumOfWorker; i++ {
 		wg.Add(1)
 		workerCtx := NewWorkerContext(processorCtx, i)
 		// TODO: block or non-block?
 		workerNotifyChannel := make(chan string, 10)
 		workerNotifyChannels = append(workerNotifyChannels, workerNotifyChannel)
-		go Work(workerCtx, i, processFunc, errCh, wg, workerNotifyChannel)
+		go Work(workerCtx, i, processorCallbacks.Process, errCh, wg, workerNotifyChannel)
 	}
 
 	if transitionErr := transitToRunning(); transitionErr != nil {
@@ -135,6 +140,11 @@ func Exit() {
 
 	// stop producers
 	closeProducers()
+
+	// call OnExit if user has one
+	if processorCallbacks.OnExit != nil {
+		processorCallbacks.OnExit()
+	}
 
 	if transitionErr := transitToExited(); transitionErr != nil {
 		logs.Printf("transit to exited failed: %v", transitionErr)

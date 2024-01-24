@@ -6,6 +6,7 @@ import (
 	"io"
 )
 
+// MarshalToReader transforms a struct to io.Reader.
 func MarshalToReader(s any) (io.Reader, error) {
 	sBytes, err := json.Marshal(s)
 	if err != nil {
@@ -23,8 +24,4 @@ func SafeJsonIndent(s any) string {
 		return ""
 	}
 	return string(marshalledS)
-}
-
-func NewInvokerRequestParams() map[string]any {
-	return make(map[string]any, 0)
 }

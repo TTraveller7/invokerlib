@@ -172,7 +172,7 @@ func createTopics() (*InvokerResponse, error) {
 		}
 		processorMetadata[pc.Name] = meta
 	}
-	logs.Printf("processorMetadata:\n%s", SafeJsonIndent(processorMetadata))
+	logs.Printf("processorMetadata: %s", SafeJsonIndent(processorMetadata))
 
 	logs.Printf("monitor create topics succeeds")
 	return successResponse(), nil
