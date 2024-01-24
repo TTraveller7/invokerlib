@@ -2,8 +2,14 @@ package invokerlib
 
 import "fmt"
 
+type InitialTopic struct {
+	Topic      string `yaml:"topic"`
+	Partitions int    `yaml:"partitions"`
+}
+
 type GlobalKafkaConfig struct {
-	Address string `yaml:"address"`
+	Address       string          `yaml:"address"`
+	InitialTopics []*InitialTopic `yaml:"initialTopics"`
 }
 
 type KafkaConfig struct {
@@ -172,4 +178,10 @@ func (ipc *InternalProcessorConfig) Validate() error {
 		ipc.OutputKafkaConfigs = make(map[string]*KafkaConfig, 0)
 	}
 	return nil
+}
+
+type InternalKafkaConfig struct {
+	Address    string
+	Topic      string
+	Partitions int
 }
