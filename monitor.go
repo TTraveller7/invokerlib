@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/IBM/sarama"
 )
@@ -20,9 +21,12 @@ type ProcessorMetadata struct {
 }
 
 var (
+	monitorMut sync.Mutex = sync.Mutex{}
+
 	rootConfig        *RootConfig = &RootConfig{}
 	adminClient       sarama.ClusterAdmin
-	interimTopics     []*KafkaConfig                = make([]*KafkaConfig, 0)
+	initialTopics     []*InternalKafkaConfig        = make([]*InternalKafkaConfig, 0)
+	interimTopics     []*InternalKafkaConfig        = make([]*InternalKafkaConfig, 0)
 	processorMetadata map[string]*ProcessorMetadata = make(map[string]*ProcessorMetadata, 0)
 )
 
@@ -91,6 +95,13 @@ func monitorHandle(req *InvokerRequest) (*InvokerResponse, error) {
 
 func loadRootConfig(req *InvokerRequest) (*InvokerResponse, error) {
 	logs.Printf("monitor load root config starts")
+	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
+		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer monitorMut.Unlock()
+
 	if req.Params == nil {
 		err := fmt.Errorf("no params is found for command %v", MonitorCommands.LoadRootConfig)
 		logs.Printf("%v", err)
@@ -114,6 +125,13 @@ func loadRootConfig(req *InvokerRequest) (*InvokerResponse, error) {
 
 func createTopics() (*InvokerResponse, error) {
 	logs.Printf("monitor create topics starts")
+	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
+		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer monitorMut.Unlock()
+
 	if rootConfig == nil {
 		err := fmt.Errorf("create topics failed: root config is not loaded")
 		logs.Printf("%v", err)
@@ -132,7 +150,31 @@ func createTopics() (*InvokerResponse, error) {
 		return nil, err
 	}
 
-	// create topics
+	// create global initial topics
+	logs.Printf("start to create global initial topics")
+	for _, kc := range rootConfig.GlobalKafkaConfig.InitialTopics {
+		err := tryCreateTopic(kc.Topic, kc.Partitions)
+		if err != nil {
+			err = fmt.Errorf("try create topic failed: %v", err)
+			logs.Printf("%v", err)
+			if _, err := removeTopics(); err != nil {
+				logs.Printf("remove topics failed: %v", err)
+				return nil, err
+			} else {
+				return nil, err
+			}
+		}
+
+		initialTopics = append(initialTopics, &InternalKafkaConfig{
+			Address:    kafkaAddr,
+			Topic:      kc.Topic,
+			Partitions: kc.Partitions,
+		})
+	}
+	logs.Printf("finish creating global initial topics")
+
+	// create interim topics for processors
+	logs.Printf("start to create interim topics for processors")
 	for _, pc := range rootConfig.ProcessorConfigs {
 		numOfPartitions := pc.OutputConfig.DefaultTopicPartitions
 		if numOfPartitions == 0 {
@@ -144,12 +186,9 @@ func createTopics() (*InvokerResponse, error) {
 
 		// use processor name as topic name
 		topicName := processorName
-		err := adminClient.CreateTopic(topicName, &sarama.TopicDetail{
-			NumPartitions:     int32(numOfPartitions),
-			ReplicationFactor: 1,
-		}, false)
+		err := tryCreateTopic(topicName, numOfPartitions)
 		if err != nil {
-			err = fmt.Errorf("create topic failed: %v", err)
+			err = fmt.Errorf("try create topic failed: %v", err)
 			logs.Printf("%v", err)
 			if _, err := removeTopics(); err != nil {
 				logs.Printf("remove topics failed: %v", err)
@@ -159,11 +198,13 @@ func createTopics() (*InvokerResponse, error) {
 			}
 		}
 
-		interimTopics = append(interimTopics, &KafkaConfig{
-			Address: kafkaAddr,
-			Topic:   topicName,
+		interimTopics = append(interimTopics, &InternalKafkaConfig{
+			Address:    kafkaAddr,
+			Topic:      topicName,
+			Partitions: numOfPartitions,
 		})
 	}
+	logs.Printf("finish creating interim topics for processors")
 
 	for _, pc := range rootConfig.ProcessorConfigs {
 		meta := &ProcessorMetadata{
@@ -178,7 +219,43 @@ func createTopics() (*InvokerResponse, error) {
 	return successResponse(), nil
 }
 
+func tryCreateTopic(topic string, partitions int) error {
+	if adminClient == nil {
+		err := fmt.Errorf("admin client must be initialized before calling tryCreateTopic")
+		logs.Printf("%v", err)
+		return err
+	}
+
+	topics, err := adminClient.ListTopics()
+	if err != nil {
+		err = fmt.Errorf("list topics failed: %v", err)
+		logs.Printf("%v", err)
+		return err
+	}
+	for existingTopic := range topics {
+		if existingTopic == topic {
+			return nil
+		}
+	}
+
+	err = adminClient.CreateTopic(topic, &sarama.TopicDetail{
+		NumPartitions:     int32(partitions),
+		ReplicationFactor: 1,
+	}, false)
+	if err != nil {
+		err = fmt.Errorf("create topic failed: %v", err)
+		logs.Printf("%v", err)
+		return err
+	}
+	return nil
+}
+
 func removeTopics() (*InvokerResponse, error) {
+	for _, kc := range initialTopics {
+		if err := adminClient.DeleteTopic(kc.Topic); err != nil {
+			return nil, err
+		}
+	}
 	for _, kc := range interimTopics {
 		if err := adminClient.DeleteTopic(kc.Topic); err != nil {
 			return nil, err
@@ -189,6 +266,13 @@ func removeTopics() (*InvokerResponse, error) {
 
 func loadProcessorEndpoints(req *InvokerRequest) (*InvokerResponse, error) {
 	logs.Printf("monitor load processor endpoints starts")
+	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
+		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer monitorMut.Unlock()
+
 	if req.Params == nil {
 		err := fmt.Errorf("no params is found for command %v", MonitorCommands.LoadProcessorEndpoints)
 		logs.Printf("%v", err)
@@ -225,6 +309,13 @@ func loadProcessorEndpoints(req *InvokerRequest) (*InvokerResponse, error) {
 
 func initializeProcessors() (*InvokerResponse, error) {
 	logs.Printf("monitor initialize processors starts")
+	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
+		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer monitorMut.Unlock()
+
 	for _, metadata := range processorMetadata {
 		if metadata.Client == nil {
 			err := fmt.Errorf("processor %s client is not initialized", metadata.Name)
@@ -250,6 +341,13 @@ func initializeProcessors() (*InvokerResponse, error) {
 
 func runProcessors() (*InvokerResponse, error) {
 	logs.Printf("monitor run processors starts")
+	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
+		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer monitorMut.Unlock()
+
 	for _, metadata := range processorMetadata {
 		if metadata.Client == nil {
 			err := fmt.Errorf("processor %s client is not initialized", metadata.Name)

@@ -6,12 +6,12 @@ processorConfigs:
     - splitter.go
     entryPoint: "SplitterHandler"
     name: "splitter"
-    numOfWorker: 1
+    numOfWorker: 3
     inputKafkaConfig: 
       address: "kafka:9092"
       topic: "word_count_source"
     outputConfig: 
-      defaultTopicPartitions: 1
+      defaultTopicPartitions: 3
   - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/word_count
     files: 
     - go.mod
@@ -19,10 +19,13 @@ processorConfigs:
     - counter.go
     entryPoint: "CounterHandler"
     name: "counter"
-    numOfWorker: 1
+    numOfWorker: 3
     inputProcessor: "splitter"
     outputConfig: 
       defaultTopicPartitions: 0
 
 globalKafkaConfig: 
   address: "kafka:9092"
+  initialTopics:
+  - topic: "word_count_source"
+    partitions: 3
