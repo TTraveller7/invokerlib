@@ -11,7 +11,7 @@ import (
 	"github.com/IBM/sarama"
 )
 
-func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, initF InitFunc) {
+func ProcessorHandle(w http.ResponseWriter, r *http.Request, pc *ProcessorCallbacks) {
 	resp := &InvokerResponse{}
 	var err error
 	defer func() {
@@ -43,12 +43,12 @@ func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, ini
 		logs.Printf("%v", err)
 		return
 	}
-	logs.Printf("received request:\n%s", string(SafeJsonIndent(req)))
+	logs.Printf("received request: %s", string(SafeJsonIndent(req)))
 
 	var handleErr error
 	switch req.Command {
 	case ProcessorCommands.Initialize:
-		resp, handleErr = handleInitialize(req, pf, initF)
+		resp, handleErr = handleInitialize(req, pc)
 	case ProcessorCommands.Ping:
 		resp = successResponse()
 		resp.Message = "pong"
@@ -65,7 +65,7 @@ func ProcessorHandle(w http.ResponseWriter, r *http.Request, pf ProcessFunc, ini
 	}
 }
 
-func handleInitialize(req *InvokerRequest, pf ProcessFunc, initF InitFunc) (*InvokerResponse, error) {
+func handleInitialize(req *InvokerRequest, pc *ProcessorCallbacks) (*InvokerResponse, error) {
 	logs.Printf("handle initialize starts")
 	ipc := &InternalProcessorConfig{}
 	if err := UnmarshalParams(req.Params, ipc); err != nil {
@@ -74,7 +74,7 @@ func handleInitialize(req *InvokerRequest, pf ProcessFunc, initF InitFunc) (*Inv
 		return nil, err
 	}
 
-	if err := Initialize(ipc, pf, initF); err != nil {
+	if err := Initialize(ipc, pc); err != nil {
 		err = fmt.Errorf("Initialize failed: %v", err)
 		logs.Printf("%v", err)
 		return nil, err
