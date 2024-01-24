@@ -47,7 +47,7 @@ func Create() {
 		return
 	}
 
-	fissionStartSuccess := true
+	fissionStartSuccess := false
 
 	// create fission env
 	err = Run("fission", "env", "create",
