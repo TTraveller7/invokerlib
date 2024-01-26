@@ -9,6 +9,7 @@ type FctlConfig struct {
 	FctlHome             string `yaml:"fctlHome"`
 	MonitorDirectoryPath string `yaml:"monitorDirectoryPath"`
 	FissionRouter        string `yaml:"fissionRouter"`
+	RootConfigPath       string `yaml:"rootConfigPath"`
 }
 
 func defaultFctlConfig() (*FctlConfig, error) {

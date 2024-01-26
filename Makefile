@@ -30,3 +30,6 @@ build:
 install:
 	rm -f $(INSTALL_PATH)
 	cp target/fctl $(INSTALL_PATH)
+
+load: 
+	fctl load -w ~/the_great_gatsby.txt -b 127.0.0.1:30092 -t word_count_source -p 3
