@@ -29,3 +29,8 @@ globalKafkaConfig:
   initialTopics:
   - topic: "word_count_source"
     partitions: 3
+
+benchmarkWorkloadConfig: 
+  - file: /home/svt/the_great_gatsby.txt
+    targetTopics: 
+    - "word_count_source"

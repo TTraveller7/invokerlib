@@ -1,6 +1,7 @@
 package invokerlib
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -86,6 +87,8 @@ func monitorHandle(req *InvokerRequest) (*InvokerResponse, error) {
 		return initializeProcessors()
 	case MonitorCommands.RunProcessors:
 		return runProcessors()
+	case MonitorCommands.Load:
+		return load()
 	default:
 		err := fmt.Errorf("unrecognized command %v", req.Command)
 		logs.Printf("%v", err)
@@ -369,4 +372,64 @@ func runProcessors() (*InvokerResponse, error) {
 
 	logs.Printf("monitor run processors finished")
 	return successResponse(), nil
+}
+
+func load() (*InvokerResponse, error) {
+	logs.Printf("monitor load starts")
+	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
+		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer monitorMut.Unlock()
+
+	producerConfig := sarama.NewConfig()
+	producerConfig.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer([]string{rootConfig.GlobalKafkaConfig.Address}, producerConfig)
+	if err != nil {
+		err = fmt.Errorf("create producer failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer producer.Close()
+
+	for _, bwc := range rootConfig.BenchmarkWorkloadConfig {
+		if err := doLoad(bwc, producer); err != nil {
+			return nil, err
+		}
+	}
+
+	logs.Printf("monitor load finished")
+	return successResponse(), nil
+}
+
+func doLoad(bwc *BenchmarkWorkload, producer sarama.SyncProducer) error {
+	workloadFileName := WorkloadFileName(bwc.File)
+	file, err := os.OpenFile(workloadFileName, os.O_RDONLY, 0644)
+	if err != nil {
+		err = fmt.Errorf("read workload file failed: %v", err)
+		logs.Printf("%v", err)
+		return err
+	}
+
+	for _, topic := range bwc.TargetTopics {
+		logs.Printf("start loading: file=%s, topic=%s", bwc.File, topic)
+		scanner := bufio.NewScanner(file)
+		var offset int64
+		for scanner.Scan() {
+			msg := &sarama.ProducerMessage{
+				Topic: topic,
+				Value: sarama.StringEncoder(scanner.Text()),
+			}
+			_, offset, err = producer.SendMessage(msg)
+			if err != nil {
+				err = fmt.Errorf("send message failed: %v", err)
+				logs.Printf("%v", err)
+				return err
+			}
+		}
+		logs.Printf("load completed: file=%s, topic=%s, final offset=%v", bwc.File, topic, offset)
+	}
+
+	return nil
 }

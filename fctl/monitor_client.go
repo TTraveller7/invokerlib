@@ -36,7 +36,7 @@ func (m *MonitorClient) LoadRootConfig(conf *invokerlib.RootConfig) (*invokerlib
 }
 
 func (m *MonitorClient) CreateTopics() (*invokerlib.InvokerResponse, error) {
-	params := make(map[string]any, 0)
+	params := invokerlib.NewInvokerRequestParams()
 	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.CreateTopics)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (m *MonitorClient) LoadProcessorEndpoints(p *invokerlib.LoadProcessorEndpoi
 }
 
 func (m *MonitorClient) InitializeProcessors() (*invokerlib.InvokerResponse, error) {
-	params := make(map[string]any, 0)
+	params := invokerlib.NewInvokerRequestParams()
 	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.InitializeProcessors)
 	if err != nil {
 		return nil, err
@@ -69,8 +69,17 @@ func (m *MonitorClient) InitializeProcessors() (*invokerlib.InvokerResponse, err
 }
 
 func (m *MonitorClient) RunProcessors() (*invokerlib.InvokerResponse, error) {
-	params := make(map[string]any, 0)
+	params := invokerlib.NewInvokerRequestParams()
 	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.RunProcessors)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (m *MonitorClient) Load() (*invokerlib.InvokerResponse, error) {
+	params := invokerlib.NewInvokerRequestParams()
+	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.Load)
 	if err != nil {
 		return nil, err
 	}

@@ -23,18 +23,4 @@ func InitFctl() {
 		logs.Printf("save fctl config failed: %v", err)
 		return
 	}
-
-	// download monitor
-	err = FctlRun("wget", "--timeout=10", `http://github.com/TTraveller7/invokerlib-monitor/archive/main.tar.gz`)
-	if err != nil {
-		logs.Printf("download monitor failed: %v", err)
-		return
-	}
-	defer FctlRun("rm", "main.tar.gz")
-
-	err = FctlRun("tar", "-xvf", "main.tar.gz")
-	if err != nil {
-		logs.Printf("extract monitor failed: %v", err)
-		return
-	}
 }
