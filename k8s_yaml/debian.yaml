@@ -18,4 +18,7 @@ spec:
       containers:
         - name: debian
           image: docker.io/debian:bookworm
-          command: ['sleep', '36000']
+          command: ['/bin/bash']
+          args:
+          - -c
+          - "apt-get update && apt-get install kafkacat -y && sleep 36000"
