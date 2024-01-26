@@ -3,7 +3,6 @@ package main
 import "github.com/TTraveller7/invokerlib"
 
 func RunProcessors() {
-	// run processors
 	cli := NewMonitorClient()
 	logs.Printf("sending command runProcessors to monitor")
 	resp, err := cli.RunProcessors()

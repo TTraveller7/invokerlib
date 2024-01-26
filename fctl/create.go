@@ -28,6 +28,26 @@ func Create() {
 
 	// TODO: check fission status
 
+	// download monitor
+	err := Run("rm", "-rf", conf.MonitorDirectoryPath)
+	if err != nil {
+		logs.Printf("remove monitor directory failed: %v", err)
+		return
+	}
+
+	err = FctlRun("wget", "--timeout=10", `http://github.com/TTraveller7/invokerlib-monitor/archive/main.tar.gz`)
+	if err != nil {
+		logs.Printf("download monitor failed: %v", err)
+		return
+	}
+	defer FctlRun("rm", "main.tar.gz")
+
+	err = FctlRun("tar", "-xvf", "main.tar.gz")
+	if err != nil {
+		logs.Printf("extract monitor failed: %v", err)
+		return
+	}
+
 	// parse config yaml
 	content, err := os.ReadFile(*pathPtr)
 	if err != nil {
@@ -73,8 +93,22 @@ func Create() {
 		}
 	}()
 
+	// copy workload files to monitor directory
+	workloadFiles := make([]string, 0)
+	for _, bwc := range invokerConfig.BenchmarkWorkloadConfig {
+		adaptedFileName := invokerlib.WorkloadFileName(bwc.File)
+		workloadFilePath := ConcatPath(conf.MonitorDirectoryPath, adaptedFileName)
+		err = Run("cp", "-f", bwc.File, workloadFilePath)
+		if err != nil {
+			logs.Printf("copy workload file failed: %v", err)
+			return
+		}
+		workloadFiles = append(workloadFiles, workloadFilePath)
+	}
+
 	// create monitor function
-	err = Run("fission", "fn", "create",
+	createMonitorCmd := []string{
+		"fission", "fn", "create",
 		"--name", "monitor",
 		"--env", FissionEnv,
 		"--entrypoint", "Handler",
@@ -83,7 +117,12 @@ func Create() {
 		"--maxscale", "1",
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.mod"),
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.sum"),
-		"--src", ConcatPath(conf.MonitorDirectoryPath, "handler.go"))
+		"--src", ConcatPath(conf.MonitorDirectoryPath, "handler.go"),
+	}
+	for _, workloadFile := range workloadFiles {
+		createMonitorCmd = append(createMonitorCmd, "--src", workloadFile)
+	}
+	err = Run(createMonitorCmd...)
 	if err != nil {
 		logs.Printf("create monitor function failed: %v", err)
 		return
@@ -153,8 +192,7 @@ func Create() {
 			"--maxscale", "1",
 		}
 		for _, file := range processorConf.Files {
-			cmd = append(cmd, "--src")
-			cmd = append(cmd, ConcatPath(processorConf.ParentDirectory, file))
+			cmd = append(cmd, "--src", ConcatPath(processorConf.ParentDirectory, file))
 		}
 		err = Run(cmd...)
 		if err != nil {

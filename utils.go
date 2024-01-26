@@ -3,7 +3,9 @@ package invokerlib
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"strings"
 )
 
 // MarshalToReader transforms a struct to io.Reader.
@@ -24,4 +26,11 @@ func SafeJsonIndent(s any) string {
 		return ""
 	}
 	return string(marshalledS)
+}
+
+func WorkloadFileName(workloadFilePath string) string {
+	levels := strings.Split(workloadFilePath, "/")
+	fileName := levels[len(levels)-1]
+	realFileName := fmt.Sprintf("invoker_workload_%s", fileName)
+	return realFileName
 }
