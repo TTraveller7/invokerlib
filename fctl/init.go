@@ -1,11 +1,5 @@
 package main
 
-import (
-	"os"
-
-	"gopkg.in/yaml.v3"
-)
-
 func InitFctl() {
 	err := Run("rm", "-rf", FctlHome)
 	if err != nil {
@@ -25,14 +19,8 @@ func InitFctl() {
 		logs.Printf("get default config failed: %v", err)
 		return
 	}
-	marshalledDefaultConf, err := yaml.Marshal(defaultConf)
-	if err != nil {
-		logs.Printf("marshal default config failed: %v", err)
-		return
-	}
-	configFilePath := ConcatPath(FctlHome, ConfigFileName)
-	if err := os.WriteFile(configFilePath, marshalledDefaultConf, 0755); err != nil {
-		logs.Printf("write default config failed: %v", err)
+	if err := saveFctlConfig(defaultConf); err != nil {
+		logs.Printf("save fctl config failed: %v", err)
 		return
 	}
 

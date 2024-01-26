@@ -3,8 +3,6 @@ package main
 import (
 	"log"
 	"os"
-
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -38,6 +36,10 @@ func main() {
 	switch os.Args[1] {
 	case "create":
 		Create()
+	case "run":
+		RunProcessors()
+	case "load":
+		Load()
 	}
 }
 
@@ -46,24 +48,6 @@ func checkFctlHome() error {
 		logs.Printf("load FctlHome failed: %v. Try `fctl init`", err)
 		return err
 	}
-	return nil
-}
-
-func loadFctlConfig() error {
-	configFilePath := ConcatPath(FctlHome, ConfigFileName)
-	fileContent, err := os.ReadFile(configFilePath)
-	if err != nil {
-		logs.Printf("read config file failed: path=%s, err=%v", configFilePath, err)
-		return err
-	}
-	logs.Printf("%s", string(fileContent))
-
-	fctlConfig := FctlConfig{}
-	if err := yaml.Unmarshal(fileContent, &fctlConfig); err != nil {
-		logs.Printf("unmarshal fctl config failed: %v", err)
-		return err
-	}
-	conf = &fctlConfig
 	return nil
 }
 
