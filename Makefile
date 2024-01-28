@@ -33,4 +33,4 @@ install:
 	cp target/fctl $(INSTALL_PATH)
 
 load: 
-	fctl load -f ~/the_great_gatsby.txt -t word_count_source
+	fctl load -u "https://gutenberg.net.au/ebooks02/0200041.txt" -n "the_great_gatsby.txt" -t word_count_source

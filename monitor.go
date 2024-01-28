@@ -411,9 +411,20 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 		logs.Printf("%v", err)
 		return nil, err
 	}
+	defer file.Close()
 
-	if _, err := io.Copy(file, workloadResp.Body); err != nil {
+	written, err := io.Copy(file, workloadResp.Body)
+	if err != nil {
 		err = fmt.Errorf("copy response to file failed: err=%v, fileName=%s", err, loadParams.Name)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	logs.Println("copy body to file finished, written=%v", written)
+	file.Close()
+
+	file, err = os.OpenFile(loadParams.Name, os.O_RDONLY, 0644)
+	if err != nil {
+		err = fmt.Errorf("open file failed: err=%v, fileName=%s", err, loadParams.Name)
 		logs.Printf("%v", err)
 		return nil, err
 	}
@@ -429,7 +440,7 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 	defer producer.Close()
 
 	for _, topic := range loadParams.Topics {
-		s := bufio.NewScanner(workloadResp.Body)
+		s := bufio.NewScanner(file)
 		var offset int64
 		var producerErr error
 		for s.Scan() {
