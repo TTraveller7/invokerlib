@@ -49,6 +49,7 @@ func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 		w.Write(respBytes)
 	}()
 
+	logs.Printf("r.URL=%v, r.URL.Path=%s", r.URL, r.URL.Path)
 	if r.URL.Path == "monitor/upload" {
 		resp, err = handleUpload(r)
 		return
