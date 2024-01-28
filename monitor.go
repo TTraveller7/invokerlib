@@ -49,13 +49,14 @@ func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 		w.Write(respBytes)
 	}()
 
-	logs.Printf("r.URL=%v, r.URL.Path=%s", r.URL, r.URL.Path)
-	if r.URL.Path == "monitor/upload" {
-		resp, err = handleUpload(r)
-		return
-	}
+	logs.Printf("%s", SafeJsonIndent(r.Header))
+	// if r.URL.Path == "monitor/upload" {
+	// 	resp, err = handleUpload(r)
+	// 	return
+	// }
 
-	content, err := io.ReadAll(r.Body)
+	var content []byte
+	content, err = io.ReadAll(r.Body)
 	if err != nil {
 		err = fmt.Errorf("read request body failed: %v", err)
 		logs.Printf("%v", err)
@@ -63,7 +64,7 @@ func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &InvokerRequest{}
-	if err := json.Unmarshal(content, req); err != nil {
+	if err = json.Unmarshal(content, req); err != nil {
 		err = fmt.Errorf("unmarshal request failed: %v", err)
 		logs.Printf("%v", err)
 		return
