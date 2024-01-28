@@ -445,6 +445,8 @@ func handleUpload(r *http.Request) (*InvokerResponse, error) {
 	}
 	defer monitorMut.Unlock()
 
+	r.Header.Set("Content-Type", "multipart/form-data")
+
 	multipartReader, err := r.MultipartReader()
 	if err != nil {
 		err = fmt.Errorf("parse multipart form failed: %v", err)
