@@ -49,12 +49,6 @@ func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 		w.Write(respBytes)
 	}()
 
-	originalPath := r.Header["X-Fission-Full-Url"][0]
-	if originalPath == "/monitor/upload" {
-		resp, err = handleUpload(r)
-		return
-	}
-
 	var content []byte
 	content, err = io.ReadAll(r.Body)
 	if err != nil {
@@ -397,9 +391,29 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 		return nil, err
 	}
 
-	file, err := os.OpenFile(loadParams.FileName, os.O_RDONLY, 0644)
+	// retrieve workload with url
+	workloadResp, err := http.Get(loadParams.Url)
 	if err != nil {
-		err = fmt.Errorf("open file failed: err=%v, fileName=%s", err, loadParams.FileName)
+		err = fmt.Errorf("retrieve workload failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	defer workloadResp.Body.Close()
+	if workloadResp.StatusCode != http.StatusOK {
+		err = fmt.Errorf("retrieve workload failed: http status is %v", workloadResp.Status)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	file, err := os.OpenFile(loadParams.Name, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		err = fmt.Errorf("open file failed: err=%v, fileName=%s", err, loadParams.Name)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	if _, err := io.Copy(file, workloadResp.Body); err != nil {
+		err = fmt.Errorf("copy response to file failed: err=%v, fileName=%s", err, loadParams.Name)
 		logs.Printf("%v", err)
 		return nil, err
 	}
@@ -415,7 +429,7 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 	defer producer.Close()
 
 	for _, topic := range loadParams.Topics {
-		s := bufio.NewScanner(file)
+		s := bufio.NewScanner(workloadResp.Body)
 		var offset int64
 		var producerErr error
 		for s.Scan() {
@@ -430,50 +444,8 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 				return nil, producerErr
 			}
 		}
-		logs.Printf("produce finished: fileName=%s, topic=%s, final offset=%v", loadParams.FileName, topic, offset)
+		logs.Printf("produce finished: fileName=%s, topic=%s, final offset=%v", loadParams.Name, topic, offset)
 	}
 
-	return successResponse(), nil
-}
-
-func handleUpload(r *http.Request) (*InvokerResponse, error) {
-	logs.Printf("monitor handleUpload starts")
-	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
-		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
-		logs.Printf("%v", err)
-		return nil, err
-	}
-	defer monitorMut.Unlock()
-
-	r.Header.Set("Content-Type", "multipart/form-data")
-
-	multipartReader, err := r.MultipartReader()
-	if err != nil {
-		err = fmt.Errorf("parse multipart form failed: %v", err)
-		logs.Printf("%v", err)
-		return nil, err
-	}
-	for {
-		part, err := multipartReader.NextPart()
-		if err == io.EOF {
-			break
-		}
-		fileName := part.FileName()
-		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0666)
-		if err != nil {
-			err = fmt.Errorf("create file failed: err=%v, fileName=%s", err, fileName)
-			logs.Printf("%v", err)
-			return nil, err
-		}
-		written, err := io.Copy(file, part)
-		if err != nil {
-			err = fmt.Errorf("write multipart query to file failed: %v", err)
-			logs.Printf("%v", err)
-			return nil, err
-		}
-		logs.Printf("load file finished: fileName=%s, written byte count=%v", fileName, written)
-	}
-
-	logs.Printf("monitor handleUpload finished")
 	return successResponse(), nil
 }

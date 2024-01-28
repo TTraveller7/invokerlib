@@ -1,9 +1,6 @@
 package main
 
 import (
-	"os"
-	"strings"
-
 	"github.com/TTraveller7/invokerlib"
 	"github.com/spf13/pflag"
 )
@@ -11,11 +8,16 @@ import (
 func Load() {
 	logs.Printf("producing workload file to Kafka")
 
-	pathPtr := pflag.StringP("workload", "f", "", "workload path")
+	urlPtr := pflag.StringP("url", "u", "", "workload url")
+	namePtr := pflag.StringP("name", "n", "", "workload name")
 	topicPtr := pflag.StringP("topic", "t", "", "topic")
 	pflag.Parse()
-	if pathPtr == nil || len(*pathPtr) == 0 {
-		logs.Printf("workload path is not provided. Use -f <workload path> to provide workload path. ")
+	if urlPtr == nil || len(*urlPtr) == 0 {
+		logs.Printf("url is not provided. Use -u <url> to provide workload url. ")
+		return
+	}
+	if namePtr == nil || len(*namePtr) == 0 {
+		logs.Printf("name is not provided. Use -n <name> to provide workload name. ")
 		return
 	}
 	if topicPtr == nil || len(*topicPtr) == 0 {
@@ -23,35 +25,15 @@ func Load() {
 		return
 	}
 
-	file, err := os.OpenFile(*pathPtr, os.O_RDONLY, 0644)
-	if err != nil {
-		logs.Printf("open workload file failed: %v", err)
-		return
-	}
-	levels := strings.Split(*pathPtr, "/")
-	fileName := levels[len(levels)-1]
-
-	// upload file to monitor
-	logs.Println("uploading to monitor")
-	uploadCli := NewMonitorUploadClient()
-	resp, err := uploadCli.Upload(fileName, file)
-	if err != nil {
-		logs.Printf("upload failed: %v", err)
-		return
-	} else if resp.Code != invokerlib.ResponseCodes.Success {
-		logs.Printf("upload failed with resp: %+v", resp)
-		return
-	}
-	logs.Printf("upload finished with resp: %+v", resp)
-
 	// send load command
 	logs.Println("sending load command to monitor")
 	loadParam := &invokerlib.LoadParams{
-		FileName: fileName,
-		Topics:   []string{*topicPtr},
+		Url:    *urlPtr,
+		Name:   *namePtr,
+		Topics: []string{*topicPtr},
 	}
 	cmdCli := NewMonitorClient()
-	resp, err = cmdCli.Load(loadParam)
+	resp, err := cmdCli.Load(loadParam)
 	if err != nil {
 		logs.Printf("load failed: %v", err)
 		return

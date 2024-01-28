@@ -36,6 +36,7 @@ type LoadProcessorEndpointsParams struct {
 }
 
 type LoadParams struct {
-	FileName string   `json:"fileName"`
-	Topics   []string `json:"topics"`
+	Name   string   `json:"name"`
+	Url    string   `json:"url"`
+	Topics []string `json:"topics"`
 }

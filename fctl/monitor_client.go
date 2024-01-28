@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/TTraveller7/invokerlib"
@@ -87,27 +86,6 @@ func (m *MonitorClient) Load(p *invokerlib.LoadParams) (*invokerlib.InvokerRespo
 	}
 
 	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.Load)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-type MonitorUploadClient struct {
-	invokerlib.InvokerClient
-}
-
-func NewMonitorUploadClient() *MonitorUploadClient {
-	return &MonitorUploadClient{
-		invokerlib.InvokerClient{
-			Cli: http.DefaultClient,
-			Url: ConcatPath(conf.FissionRouter, "monitor/upload"),
-		},
-	}
-}
-
-func (m *MonitorUploadClient) Upload(fileName string, file io.Reader) (*invokerlib.InvokerResponse, error) {
-	resp, err := m.SendFile(fileName, file)
 	if err != nil {
 		return nil, err
 	}
