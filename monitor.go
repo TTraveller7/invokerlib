@@ -49,6 +49,11 @@ func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 		w.Write(respBytes)
 	}()
 
+	if r.URL.Path == "monitor/upload" {
+		resp, err = handleUpload(r)
+		return
+	}
+
 	content, err := io.ReadAll(r.Body)
 	if err != nil {
 		err = fmt.Errorf("read request body failed: %v", err)
@@ -88,7 +93,7 @@ func monitorHandle(req *InvokerRequest) (*InvokerResponse, error) {
 	case MonitorCommands.RunProcessors:
 		return runProcessors()
 	case MonitorCommands.Load:
-		return load()
+		return load(req)
 	default:
 		err := fmt.Errorf("unrecognized command %v", req.Command)
 		logs.Printf("%v", err)
@@ -374,7 +379,7 @@ func runProcessors() (*InvokerResponse, error) {
 	return successResponse(), nil
 }
 
-func load() (*InvokerResponse, error) {
+func load(req *InvokerRequest) (*InvokerResponse, error) {
 	logs.Printf("monitor load starts")
 	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
 		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
@@ -382,6 +387,20 @@ func load() (*InvokerResponse, error) {
 		return nil, err
 	}
 	defer monitorMut.Unlock()
+
+	loadParams := &LoadParams{}
+	if err := UnmarshalParams(req.Params, loadParams); err != nil {
+		err = fmt.Errorf("unmarshal params failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	file, err := os.OpenFile(loadParams.FileName, os.O_RDONLY, 0644)
+	if err != nil {
+		err = fmt.Errorf("open file failed: err=%v, fileName=%s", err, loadParams.FileName)
+		logs.Printf("%v", err)
+		return nil, err
+	}
 
 	producerConfig := sarama.NewConfig()
 	producerConfig.Producer.Return.Successes = true
@@ -393,43 +412,64 @@ func load() (*InvokerResponse, error) {
 	}
 	defer producer.Close()
 
-	for _, bwc := range rootConfig.BenchmarkWorkloadConfig {
-		if err := doLoad(bwc, producer); err != nil {
-			return nil, err
+	for _, topic := range loadParams.Topics {
+		s := bufio.NewScanner(file)
+		var offset int64
+		var producerErr error
+		for s.Scan() {
+			msg := &sarama.ProducerMessage{
+				Topic: topic,
+				Value: sarama.ByteEncoder(s.Bytes()),
+			}
+			_, offset, producerErr = producer.SendMessage(msg)
+			if producerErr != nil {
+				producerErr = fmt.Errorf("send message failed: %v", producerErr)
+				logs.Printf("%v", producerErr)
+				return nil, producerErr
+			}
 		}
+		logs.Printf("produce finished: fileName=%s, topic=%s, final offset=%v", loadParams.FileName, topic, offset)
 	}
 
-	logs.Printf("monitor load finished")
 	return successResponse(), nil
 }
 
-func doLoad(bwc *BenchmarkWorkload, producer sarama.SyncProducer) error {
-	workloadFileName := WorkloadFileName(bwc.File)
-	file, err := os.OpenFile(workloadFileName, os.O_RDONLY, 0644)
-	if err != nil {
-		err = fmt.Errorf("read workload file failed: %v", err)
+func handleUpload(r *http.Request) (*InvokerResponse, error) {
+	logs.Printf("monitor handleUpload starts")
+	if lockSuccess := monitorMut.TryLock(); !lockSuccess {
+		err := fmt.Errorf("fail to lock monitor: another client holds the lock")
 		logs.Printf("%v", err)
-		return err
+		return nil, err
 	}
+	defer monitorMut.Unlock()
 
-	for _, topic := range bwc.TargetTopics {
-		logs.Printf("start loading: file=%s, topic=%s", bwc.File, topic)
-		scanner := bufio.NewScanner(file)
-		var offset int64
-		for scanner.Scan() {
-			msg := &sarama.ProducerMessage{
-				Topic: topic,
-				Value: sarama.StringEncoder(scanner.Text()),
-			}
-			_, offset, err = producer.SendMessage(msg)
-			if err != nil {
-				err = fmt.Errorf("send message failed: %v", err)
-				logs.Printf("%v", err)
-				return err
-			}
+	multipartReader, err := r.MultipartReader()
+	if err != nil {
+		err = fmt.Errorf("parse multipart form failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	for {
+		part, err := multipartReader.NextPart()
+		if err == io.EOF {
+			break
 		}
-		logs.Printf("load completed: file=%s, topic=%s, final offset=%v", bwc.File, topic, offset)
+		fileName := part.FileName()
+		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0666)
+		if err != nil {
+			err = fmt.Errorf("create file failed: err=%v, fileName=%s", err, fileName)
+			logs.Printf("%v", err)
+			return nil, err
+		}
+		written, err := io.Copy(file, part)
+		if err != nil {
+			err = fmt.Errorf("write multipart query to file failed: %v", err)
+			logs.Printf("%v", err)
+			return nil, err
+		}
+		logs.Printf("load file finished: fileName=%s, written byte count=%v", fileName, written)
 	}
 
-	return nil
+	logs.Printf("monitor handleUpload finished")
+	return successResponse(), nil
 }

@@ -84,11 +84,6 @@ type GlobalStoreConfig struct {
 	GlobalStoreSpec map[string]string `yaml:"globalStoreSpec"`
 }
 
-type BenchmarkWorkload struct {
-	File         string   `yaml:"file"`
-	TargetTopics []string `yaml:"targetTopics"`
-}
-
 type RootConfig struct {
 	// ProcessorConfigs defines all the processors in the stream processing pipeline. At least one processor config
 	// must be provided.
@@ -99,8 +94,6 @@ type RootConfig struct {
 
 	// GlobalKafkaConfig specifies which Kafka cluster the interim topics should be created on.
 	GlobalKafkaConfig *GlobalKafkaConfig `yaml:"globalKafkaConfig"`
-
-	BenchmarkWorkloadConfig []*BenchmarkWorkload `yaml:"benchmarkWorkloadConfig"`
 }
 
 func (rc *RootConfig) Validate() error {
@@ -161,15 +154,6 @@ func (rc *RootConfig) Validate() error {
 		}
 		if it.Partitions == 0 {
 			return fmt.Errorf("the partition field of initial topic %s must be greater than 0", it.Topic)
-		}
-	}
-
-	for _, bwc := range rc.BenchmarkWorkloadConfig {
-		if bwc.File == "" {
-			return fmt.Errorf("benchmark workload file name cannot be empty")
-		}
-		if len(bwc.TargetTopics) == 0 {
-			return fmt.Errorf("benchmark workload for file %s must have at least one target topic", bwc.File)
 		}
 	}
 

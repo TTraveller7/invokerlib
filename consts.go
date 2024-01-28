@@ -55,4 +55,7 @@ var processorStatus = struct {
 	Down:    "Down",
 }
 
-const MimeTypeJson = "application/json"
+const (
+	MimeTypeJson              = "application/json"
+	MimeTypeMultipartFormData = "multipart/form-data"
+)

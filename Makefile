@@ -12,6 +12,7 @@ clean:
 cleanfission:
 	fission fn delete --name "monitor" --ignorenotfound
 	-fission httptrigger delete --name "monitor" --ignorenotfound
+	-fission httptrigger delete --name "monitorupload" --ignorenotfound
 	-fission httptrigger delete --name "counter" --ignorenotfound
 	-fission httptrigger delete --name "splitter" --ignorenotfound
 	fission fn delete --name "splitter" --ignorenotfound
@@ -32,4 +33,4 @@ install:
 	cp target/fctl $(INSTALL_PATH)
 
 load: 
-	fctl load -w ~/the_great_gatsby.txt -b 127.0.0.1:30092 -t word_count_source
+	fctl load -f ~/the_great_gatsby.txt -t word_count_source
