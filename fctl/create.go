@@ -12,7 +12,7 @@ import (
 )
 
 func Create() {
-	pathPtr := pflag.StringP("config", "c", "", "Yaml config path.")
+	pathPtr := pflag.StringP("config", "f", "", "Yaml config path.")
 	keepAliveOnFailurePtr := pflag.BoolP("keepAliveOnFailure", "k", false,
 		"If set to true, resources are kept alive and not removed when any creation step fails. Defualt false.")
 
@@ -93,22 +93,8 @@ func Create() {
 		}
 	}()
 
-	// copy workload files to monitor directory
-	workloadFiles := make([]string, 0)
-	for _, bwc := range invokerConfig.BenchmarkWorkloadConfig {
-		adaptedFileName := invokerlib.WorkloadFileName(bwc.File)
-		workloadFilePath := ConcatPath(conf.MonitorDirectoryPath, adaptedFileName)
-		err = Run("cp", "-f", bwc.File, workloadFilePath)
-		if err != nil {
-			logs.Printf("copy workload file failed: %v", err)
-			return
-		}
-		workloadFiles = append(workloadFiles, workloadFilePath)
-	}
-
 	// create monitor function
-	createMonitorCmd := []string{
-		"fission", "fn", "create",
+	err = Run("fission", "fn", "create",
 		"--name", "monitor",
 		"--env", FissionEnv,
 		"--entrypoint", "Handler",
@@ -118,11 +104,7 @@ func Create() {
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.mod"),
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.sum"),
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "handler.go"),
-	}
-	for _, workloadFile := range workloadFiles {
-		createMonitorCmd = append(createMonitorCmd, "--src", workloadFile)
-	}
-	err = Run(createMonitorCmd...)
+	)
 	if err != nil {
 		logs.Printf("create monitor function failed: %v", err)
 		return
@@ -134,7 +116,7 @@ func Create() {
 		}
 	}()
 
-	// create monitor http endpoint
+	// create monitor http endpoints
 	err = Run("fission", "httptrigger", "create",
 		"--name", "monitor",
 		"--url", "/monitor",
@@ -150,7 +132,23 @@ func Create() {
 				"--name", "monitor")
 		}
 	}()
+	time.Sleep(1 * time.Second)
 
+	err = Run("fission", "httptrigger", "create",
+		"--name", "monitorupload",
+		"--url", "/monitor/upload",
+		"--method", "POST",
+		"--function", "monitor")
+	if err != nil {
+		logs.Printf("create monitorUpload httptrigger failed: %v", err)
+		return
+	}
+	defer func() {
+		if !keepAliveOnFailure && !fissionStartSuccess {
+			Run("fission", "httptrigger", "delete",
+				"--name", "monitorupload")
+		}
+	}()
 	time.Sleep(1 * time.Second)
 
 	cli := NewMonitorClient()
@@ -207,8 +205,9 @@ func Create() {
 		}()
 
 		// create processor http endpoint
+		endpointName := getProcessorEndpointName(name)
 		err = Run("fission", "httptrigger", "create",
-			"--name", name,
+			"--name", endpointName,
 			"--url", "/"+name,
 			"--method", "POST",
 			"--function", name)
@@ -219,7 +218,7 @@ func Create() {
 		defer func() {
 			if !keepAliveOnFailure && !fissionStartSuccess {
 				Run("fission", "httptrigger", "delete",
-					"--name", name)
+					"--name", endpointName)
 			}
 		}()
 

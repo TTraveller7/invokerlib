@@ -74,3 +74,7 @@ func loadYaml(sPtr any, path string) error {
 	}
 	return nil
 }
+
+func getProcessorEndpointName(processorName string) string {
+	return strings.ToLower(processorName)
+}

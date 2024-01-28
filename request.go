@@ -34,3 +34,8 @@ func MarshalToParams(s any) (map[string]any, error) {
 type LoadProcessorEndpointsParams struct {
 	Endpoints []string `json:"endpoints"`
 }
+
+type LoadParams struct {
+	FileName string   `json:"fileName"`
+	Topics   []string `json:"topics"`
+}
