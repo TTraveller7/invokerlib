@@ -49,11 +49,11 @@ func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 		w.Write(respBytes)
 	}()
 
-	logs.Printf("%s", SafeJsonIndent(r.Header))
-	// if r.URL.Path == "monitor/upload" {
-	// 	resp, err = handleUpload(r)
-	// 	return
-	// }
+	originalPath := r.Header["X-Fission-Full-Url"][0]
+	if originalPath == "/monitor/upload" {
+		resp, err = handleUpload(r)
+		return
+	}
 
 	var content []byte
 	content, err = io.ReadAll(r.Body)
