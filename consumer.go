@@ -23,24 +23,21 @@ func initConsumer() error {
 }
 
 type workerConsumerHandler struct {
-	setup               func(session sarama.ConsumerGroupSession) error
-	cleanup             func(session sarama.ConsumerGroupSession) error
+	setup               func() error
 	consume             func(record *Record) error
 	workerNotifyChannel <-chan string
+	workerReadyChannel  chan<- bool
 }
 
 func (h workerConsumerHandler) Setup(session sarama.ConsumerGroupSession) error {
-	if h.setup == nil {
-		return nil
+	if h.setup != nil {
+		return h.setup()
 	}
-	return h.setup(session)
+	return nil
 }
 
 func (h workerConsumerHandler) Cleanup(session sarama.ConsumerGroupSession) error {
-	if h.cleanup == nil {
-		return nil
-	}
-	return h.cleanup(session)
+	return nil
 }
 
 func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
@@ -63,8 +60,11 @@ func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 	}
 }
 
-func NewConsumerGroupHandler(consumeFunc func(record *Record) error, workerNotifyChannel <-chan string) sarama.ConsumerGroupHandler {
+func NewConsumerGroupHandler(setupFunc func() error, consumeFunc func(record *Record) error,
+	workerNotifyChannel <-chan string) sarama.ConsumerGroupHandler {
+
 	return &workerConsumerHandler{
+		setup:               setupFunc,
 		consume:             consumeFunc,
 		workerNotifyChannel: workerNotifyChannel,
 	}

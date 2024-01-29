@@ -101,15 +101,41 @@ func Run() error {
 	if transitionErr != nil {
 		return fmt.Errorf("start transition failed: %v", transitionErr)
 	}
-	defer resetFunc()
+	hasReset := false
+	defer func() {
+		if !hasReset {
+			resetFunc()
+		}
+	}()
 
 	for i := 0; i < conf.NumOfWorker; i++ {
-		wg.Add(1)
 		workerCtx := NewWorkerContext(processorCtx, i)
 		// TODO: block or non-block?
+
 		workerNotifyChannel := make(chan string, 10)
 		workerNotifyChannels = append(workerNotifyChannels, workerNotifyChannel)
-		go Work(workerCtx, i, processorCallbacks.Process, errCh, wg, workerNotifyChannel)
+
+		workerReadyChannel := make(chan bool)
+
+		go Work(workerCtx, i, processorCallbacks.Process, errCh, wg, workerNotifyChannel, workerReadyChannel)
+
+		select {
+		case <-workerReadyChannel:
+			logs.Printf("worker #%v starts successfully", i)
+		case workerErr := <-errCh:
+			// this worker does not start successfully, try to exit
+
+			// reset previous transition
+			resetFunc()
+			hasReset = true
+
+			// stop workers, close producers and consumer group
+			Exit()
+
+			return fmt.Errorf("start worker #%v failed: %v", i, workerErr)
+		}
+
+		wg.Add(1)
 	}
 
 	if transitionErr := transitToRunning(); transitionErr != nil {
@@ -135,7 +161,7 @@ func Exit() {
 	}
 	wg.Done()
 
-	// stop consumers
+	// stop consumer group
 	closeConsumerGroup()
 
 	// stop producers
