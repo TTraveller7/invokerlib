@@ -20,6 +20,8 @@ cleanfission:
 
 cleank8s: 
 	kubectl delete -f k8s_yaml --ignore-not-found=true
+	kubectl delete svc -l environmentName=invoker
+	kubectl delete deployment -l environmentName=invoker
 
 applyk8s: 
 	kubectl apply -f k8s_yaml
