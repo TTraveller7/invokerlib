@@ -12,7 +12,6 @@ clean:
 cleanfission:
 	fission fn delete --name "monitor" --ignorenotfound
 	-fission httptrigger delete --name "monitor" --ignorenotfound
-	-fission httptrigger delete --name "monitorupload" --ignorenotfound
 	-fission httptrigger delete --name "counter" --ignorenotfound
 	-fission httptrigger delete --name "splitter" --ignorenotfound
 	fission fn delete --name "splitter" --ignorenotfound
