@@ -1,15 +1,20 @@
 package invokerlib
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/IBM/sarama"
 )
 
-var consumerGroup sarama.ConsumerGroup
+var consumerGroups []sarama.ConsumerGroup
 
 func initConsumer() error {
+	consumerGroups = make([]sarama.ConsumerGroup, 0)
+
+	return nil
+}
+
+func consumerConfig() *sarama.Config {
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_0_0_0
 
@@ -17,14 +22,7 @@ func initConsumer() error {
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	config.Consumer.Return.Errors = true
-
-	grp, err := sarama.NewConsumerGroup([]string{conf.InputKafkaConfig.Address}, conf.Name, config)
-	if err != nil {
-		return fmt.Errorf("initialize consumer failed: %v", err)
-	}
-	consumerGroup = grp
-
-	return nil
+	return config
 }
 
 type workerConsumerHandler struct {
@@ -88,5 +86,7 @@ func NewConsumerGroupHandler(logs *log.Logger, setupFunc func() error, consumeFu
 }
 
 func closeConsumerGroup() {
-	consumerGroup.Close()
+	for _, grp := range consumerGroups {
+		grp.Close()
+	}
 }

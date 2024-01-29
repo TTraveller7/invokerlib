@@ -6,21 +6,35 @@ import (
 	"log"
 	"os"
 	"sync"
+
+	"github.com/IBM/sarama"
 )
 
 func Work(ctx context.Context, workerIndex int, processFunc ProcessCallback, errCh chan<- error, wg *sync.WaitGroup,
 	workerNotifyChannel <-chan string, workerReadyChannel chan<- bool) {
+
 	logs := log.New(os.Stdout, fmt.Sprintf("[worker #%v] ", workerIndex), log.LstdFlags|log.Lshortfile)
+
+	var workerErr error
 	defer func() {
 		if recoverErr := recover(); recoverErr != nil {
-			err := fmt.Errorf("%v", recoverErr)
-			logs.Printf("recovered. error: %v", err)
-			errCh <- err
+			workerErr = fmt.Errorf("%v", recoverErr)
+			logs.Printf("recovered. error: %v", workerErr)
+		}
+		if workerErr != nil {
+			errCh <- workerErr
 		}
 		wg.Done()
 		logs.Printf("ends")
 	}()
 	logs.Printf("starts")
+
+	consumerGroup, err := sarama.NewConsumerGroup([]string{conf.InputKafkaConfig.Address}, conf.Name, consumerConfig())
+	if err != nil {
+		workerErr = fmt.Errorf("initialize consumer group failed: %v", err)
+		logs.Printf("%v", workerErr)
+		return
+	}
 
 	isReady := false
 	setupFunc := func() error {
@@ -48,7 +62,7 @@ func Work(ctx context.Context, workerIndex int, processFunc ProcessCallback, err
 			return
 		} else if err != nil {
 			logs.Printf("consume returns error: %v", err)
-			errCh <- err
+			workerErr = err
 			return
 		}
 	}
