@@ -37,7 +37,7 @@ func Work(ctx context.Context, workerIndex int, processFunc ProcessCallback, err
 		}
 		return nil
 	}
-	consumerGroupHandler := NewConsumerGroupHandler(setupFunc, consumeFunc, workerNotifyChannel)
+	consumerGroupHandler := NewConsumerGroupHandler(logs, setupFunc, consumeFunc, workerNotifyChannel)
 
 	count := 0
 	for {

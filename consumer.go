@@ -2,6 +2,7 @@ package invokerlib
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/IBM/sarama"
 )
@@ -11,6 +12,10 @@ var consumerGroup sarama.ConsumerGroup
 func initConsumer() error {
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_0_0_0
+
+	// start consuming from the oldest offset
+	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+
 	config.Consumer.Return.Errors = true
 
 	grp, err := sarama.NewConsumerGroup([]string{conf.InputKafkaConfig.Address}, conf.Name, config)
@@ -23,13 +28,14 @@ func initConsumer() error {
 }
 
 type workerConsumerHandler struct {
+	logs                *log.Logger
 	setup               func() error
 	consume             func(record *Record) error
 	workerNotifyChannel <-chan string
-	workerReadyChannel  chan<- bool
 }
 
 func (h workerConsumerHandler) Setup(session sarama.ConsumerGroupSession) error {
+	h.logs.Println("Consumer Setup invoked")
 	if h.setup != nil {
 		return h.setup()
 	}
@@ -37,13 +43,22 @@ func (h workerConsumerHandler) Setup(session sarama.ConsumerGroupSession) error 
 }
 
 func (h workerConsumerHandler) Cleanup(session sarama.ConsumerGroupSession) error {
+	h.logs.Println("Consumer Cleanup invoked")
 	return nil
 }
 
-func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
+	claim sarama.ConsumerGroupClaim) error {
+
+	h.logs.Println("Consumer ConsumeClaim invoked")
+
 	for {
 		select {
-		case msg := <-claim.Messages():
+		case msg, ok := <-claim.Messages():
+			if !ok {
+				h.logs.Println("Message channel closed, exiting ConsumeClaim")
+				return nil
+			}
 			r := &Record{
 				Key:   string(msg.Key),
 				Value: msg.Value,
@@ -60,10 +75,11 @@ func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 	}
 }
 
-func NewConsumerGroupHandler(setupFunc func() error, consumeFunc func(record *Record) error,
+func NewConsumerGroupHandler(logs *log.Logger, setupFunc func() error, consumeFunc func(record *Record) error,
 	workerNotifyChannel <-chan string) sarama.ConsumerGroupHandler {
 
 	return &workerConsumerHandler{
+		logs:                logs,
 		setup:               setupFunc,
 		consume:             consumeFunc,
 		workerNotifyChannel: workerNotifyChannel,
