@@ -28,6 +28,7 @@ func initConsumer() error {
 }
 
 type workerConsumerHandler struct {
+	sarama.ConsumerGroupHandler
 	logs                *log.Logger
 	setup               func() error
 	consume             func(record *Record) error

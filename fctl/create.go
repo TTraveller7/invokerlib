@@ -101,6 +101,7 @@ func Create() {
 		"--executortype", "newdeploy",
 		"--minscale", "1",
 		"--maxscale", "1",
+		"--fntimeout", "300",
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.mod"),
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "go.sum"),
 		"--src", ConcatPath(conf.MonitorDirectoryPath, "handler.go"),
@@ -130,23 +131,6 @@ func Create() {
 		if !keepAliveOnFailure && !fissionStartSuccess {
 			Run("fission", "httptrigger", "delete",
 				"--name", "monitor")
-		}
-	}()
-	time.Sleep(1 * time.Second)
-
-	err = Run("fission", "httptrigger", "create",
-		"--name", "monitorupload",
-		"--url", "/monitor/upload",
-		"--method", "POST",
-		"--function", "monitor")
-	if err != nil {
-		logs.Printf("create monitorUpload httptrigger failed: %v", err)
-		return
-	}
-	defer func() {
-		if !keepAliveOnFailure && !fissionStartSuccess {
-			Run("fission", "httptrigger", "delete",
-				"--name", "monitorupload")
 		}
 	}()
 	time.Sleep(1 * time.Second)
@@ -188,6 +172,7 @@ func Create() {
 			"--executortype", "newdeploy",
 			"--minscale", "1",
 			"--maxscale", "1",
+			"--fntimeout", "300",
 		}
 		for _, file := range processorConf.Files {
 			cmd = append(cmd, "--src", ConcatPath(processorConf.ParentDirectory, file))
