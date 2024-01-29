@@ -28,6 +28,7 @@ var allowedTransitions = map[functionState][]functionState{
 	},
 	functionStates.Initialized: {
 		functionStates.Running,
+		functionStates.Exited,
 	},
 	functionStates.Running: {
 		functionStates.Paused,

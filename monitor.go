@@ -419,7 +419,7 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 		logs.Printf("%v", err)
 		return nil, err
 	}
-	logs.Println("copy body to file finished, written=%v", written)
+	logs.Printf("copy body to file finished, written=%v", written)
 	file.Close()
 
 	file, err = os.OpenFile(loadParams.Name, os.O_RDONLY, 0644)
