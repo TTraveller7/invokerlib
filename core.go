@@ -108,7 +108,7 @@ func Run() error {
 		}
 	}()
 
-	for i := 0; i < 1; i++ {
+	for i := 0; i < conf.NumOfWorker; i++ {
 		workerCtx := NewWorkerContext(processorCtx, i)
 		// TODO: block or non-block?
 
