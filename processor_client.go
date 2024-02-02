@@ -97,3 +97,11 @@ func (pc *ProcessorClient) Run() (*InvokerResponse, error) {
 	}
 	return resp, nil
 }
+
+func (pc *ProcessorClient) Cat() (*InvokerResponse, error) {
+	resp, err := pc.SendCommand(NewInvokerRequestParams(), ProcessorCommands.Cat)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

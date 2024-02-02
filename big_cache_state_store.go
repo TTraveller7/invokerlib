@@ -65,6 +65,10 @@ func (b *BigCacheStateStore) Put(ctx context.Context, key string, val []byte) er
 	return nil
 }
 
+func (b *BigCacheStateStore) PutWithExpireTime(ctx context.Context, key string, val []byte, expireSeconds int) error {
+	panic("PutWithExpireTime is not implemented by BigCacheStateStore")
+}
+
 func (b *BigCacheStateStore) Delete(ctx context.Context, key string) error {
 	if err := b.cli.Delete(key); err != nil {
 		return err

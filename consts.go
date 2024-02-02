@@ -24,6 +24,7 @@ var MonitorCommands = struct {
 	InitializeProcessors   string
 	RunProcessors          string
 	Load                   string
+	CatProcessor           string
 }{
 	LoadRootConfig:         "loadRootConfig",
 	CreateTopics:           "createTopics",
@@ -31,6 +32,7 @@ var MonitorCommands = struct {
 	InitializeProcessors:   "initializeProcessors",
 	RunProcessors:          "runProcessors",
 	Load:                   "load",
+	CatProcessor:           "catProcessor",
 }
 
 var ProcessorCommands = struct {
@@ -38,11 +40,13 @@ var ProcessorCommands = struct {
 	Run        string
 	Exit       string
 	Ping       string
+	Cat        string
 }{
 	Initialize: "initialize",
 	Run:        "run",
 	Exit:       "exit",
 	Ping:       "ping",
+	Cat:        "cat",
 }
 
 var processorStatus = struct {
@@ -59,3 +63,5 @@ const (
 	MimeTypeJson              = "application/json"
 	MimeTypeMultipartFormData = "multipart/form-data"
 )
+
+const CacheSize = 100 * 1024 * 1024

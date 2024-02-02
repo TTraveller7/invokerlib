@@ -31,6 +31,8 @@ type NamedKafkaConfig struct {
 // Proposals:
 // 1. Topological ordering?
 // 2. Monitor healthchecks
+// 3. Local state store health check: We should make sure that the local state store always has enough size
+// so that keys are not evicted automatically
 
 type ProcessorConfig struct {
 	// ParentDirectory is the parent directory that stores user-defined go files.

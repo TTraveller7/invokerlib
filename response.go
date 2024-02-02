@@ -18,6 +18,13 @@ type InvokerResponse struct {
 	HostName string `json:"host_name"`
 }
 
+type ProcessorCatResult map[string][]StateStoreEntry
+
+type StateStoreEntry struct {
+	Key string `json:"key"`
+	Val string `json:"val"`
+}
+
 func successResponse() *InvokerResponse {
 	return &InvokerResponse{
 		Code:     ResponseCodes.Success,

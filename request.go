@@ -40,3 +40,7 @@ type LoadParams struct {
 	Url    string   `json:"url"`
 	Topics []string `json:"topics"`
 }
+
+type CatProcessorParams struct {
+	ProcessorName string `json:"processorName"`
+}
