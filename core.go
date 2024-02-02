@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 	"sync"
 )
 
-type InitCallback func()
+type InitCallback func() error
 type ProcessCallback func(ctx context.Context, record *Record) error
 type ExitCallback func()
 
@@ -85,7 +86,11 @@ func Initialize(internalPc *InternalProcessorConfig, pc *ProcessorCallbacks) err
 
 	// call OnInit if user has one
 	if processorCallbacks.OnInit != nil {
-		processorCallbacks.OnInit()
+		if err := doOnInit(processorCallbacks.OnInit); err != nil {
+			err = fmt.Errorf("user callback OnInit failed: %v", err)
+			logs.Printf("%v", err)
+			return err
+		}
 	}
 
 	if err := transitToInitialized(); err != nil {
@@ -94,6 +99,16 @@ func Initialize(internalPc *InternalProcessorConfig, pc *ProcessorCallbacks) err
 		return err
 	}
 	return nil
+}
+
+func doOnInit(OnInit InitCallback) (err error) {
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			err = fmt.Errorf("%v. %s", panicErr, string(debug.Stack()))
+		}
+	}()
+	err = OnInit()
+	return
 }
 
 func Run() error {
