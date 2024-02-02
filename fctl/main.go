@@ -40,6 +40,8 @@ func main() {
 		RunProcessors()
 	case "load":
 		Load()
+	case "cat":
+		Cat()
 	}
 }
 

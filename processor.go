@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"runtime/debug"
-
-	"github.com/IBM/sarama"
 )
 
 func ProcessorHandle(w http.ResponseWriter, r *http.Request, pc *ProcessorCallbacks) {
@@ -54,6 +52,8 @@ func ProcessorHandle(w http.ResponseWriter, r *http.Request, pc *ProcessorCallba
 		resp.Message = "pong"
 	case ProcessorCommands.Run:
 		resp, handleErr = handleRun()
+	case ProcessorCommands.Cat:
+		resp, handleErr = handleCat()
 	default:
 		err = fmt.Errorf("unrecognized command %s", req.Command)
 		logs.Printf("%v", err)
@@ -94,30 +94,22 @@ func handleRun() (*InvokerResponse, error) {
 	return successResponse(), nil
 }
 
-func PassToDefaultOutputTopic(ctx context.Context, record *Record) error {
-	producer, err := defaultProducer()
+func handleCat() (*InvokerResponse, error) {
+	logs.Printf("handle cat starts")
+	res, err := cat(context.Background())
 	if err != nil {
-		return err
+		err = fmt.Errorf("cat failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
 	}
-	producer.produce(&sarama.ProducerMessage{
-		Key:   sarama.StringEncoder(record.Key),
-		Value: sarama.ByteEncoder(record.Value),
-	})
-	return nil
-}
-
-func PassToOutputTopic(ctx context.Context, name string, record *Record) error {
-	kafkaDest, exists := conf.OutputKafkaConfigs[name]
-	if !exists {
-		return fmt.Errorf("output topic with name %s does not exist", name)
-	}
-	producer, err := getProducer(kafkaDest.Topic)
+	msgBytes, err := json.Marshal(res)
 	if err != nil {
-		return err
+		err = fmt.Errorf("marshal cat result failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
 	}
-	producer.produce(&sarama.ProducerMessage{
-		Key:   sarama.StringEncoder(record.Key),
-		Value: sarama.ByteEncoder(record.Value),
-	})
-	return nil
+	resp := successResponse()
+	resp.Message = string(msgBytes)
+	logs.Printf("handle cat finished")
+	return resp, nil
 }

@@ -91,3 +91,18 @@ func (m *MonitorClient) Load(p *invokerlib.LoadParams) (*invokerlib.InvokerRespo
 	}
 	return resp, nil
 }
+
+func (m *MonitorClient) CatProcessor(p *invokerlib.CatProcessorParams) (*invokerlib.InvokerResponse, error) {
+	params, err := invokerlib.MarshalToParams(p)
+	if err != nil {
+		err := fmt.Errorf("monitor client marshal to params failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	resp, err := m.SendCommand(params, invokerlib.MonitorCommands.CatProcessor)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

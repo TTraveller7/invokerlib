@@ -3,6 +3,7 @@ package invokerlib
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -26,7 +27,11 @@ func (r *RedisStateStore) Get(ctx context.Context, key string) ([]byte, error) {
 }
 
 func (r *RedisStateStore) Put(ctx context.Context, key string, val []byte) error {
-	if err := r.cli.Set(ctx, key, string(val), 0).Err(); err != nil {
+	return r.PutWithExpireTime(ctx, key, val, 0)
+}
+
+func (r *RedisStateStore) PutWithExpireTime(ctx context.Context, key string, val []byte, expireSeconds int) error {
+	if err := r.cli.Set(ctx, key, string(val), time.Duration(expireSeconds)*time.Second).Err(); err != nil {
 		return err
 	}
 	return nil

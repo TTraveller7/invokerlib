@@ -90,6 +90,8 @@ func monitorHandle(req *InvokerRequest) (*InvokerResponse, error) {
 		return runProcessors()
 	case MonitorCommands.Load:
 		return load(req)
+	case MonitorCommands.CatProcessor:
+		return catProcessor(req)
 	default:
 		err := fmt.Errorf("unrecognized command %v", req.Command)
 		logs.Printf("%v", err)
@@ -459,4 +461,37 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 	}
 
 	return successResponse(), nil
+}
+
+func catProcessor(req *InvokerRequest) (*InvokerResponse, error) {
+	p := &CatProcessorParams{}
+	if err := UnmarshalParams(req.Params, p); err != nil {
+		err = fmt.Errorf("unmarshal params failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	m, exists := processorMetadata[p.ProcessorName]
+	if !exists {
+		err := fmt.Errorf("processor with name %s does not exist", p.ProcessorName)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	catResp, err := m.Client.Cat()
+	if err != nil {
+		err = fmt.Errorf("processor cat failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	} else if catResp.Code != ResponseCodes.Success {
+		err = fmt.Errorf("processor cat failed with resp: %+v", catResp)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+	logs.Printf("processor cat finished with resp: %+v", catResp)
+
+	resp := successResponse()
+	resp.Message = catResp.Message
+	logs.Printf("monitor cat processor finished")
+	return resp, nil
 }
