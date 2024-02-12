@@ -33,6 +33,9 @@ type NamedKafkaConfig struct {
 // 2. Monitor healthchecks
 // 3. Local state store health check: We should make sure that the local state store always has enough size
 // so that keys are not evicted automatically
+// 4. upload file
+// 5. state store commit log and check pointing
+// 6. automatic # worker and partition adjustment
 
 type ProcessorConfig struct {
 	// ParentDirectory is the parent directory that stores user-defined go files.

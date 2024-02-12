@@ -63,9 +63,11 @@ func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 				Value: msg.Value,
 			}
 			if err := h.consume(r); err != nil {
+				metricsClient.EmitCounter("consume_error", "Number of messages that are not successfully consumed", 1)
 				return err
 			}
 			session.MarkMessage(msg, "")
+			metricsClient.EmitCounter("consume_success", "Number of messages that are successfully consumed", 1)
 		case notify := <-h.workerNotifyChannel:
 			if notify == "exit" {
 				return errConsumerNotify

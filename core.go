@@ -29,6 +29,8 @@ var (
 	errCh                chan error
 	wg                   *sync.WaitGroup
 	processorCtx         context.Context
+
+	metricsClient *MetricsClient
 )
 
 func Initialize(internalPc *InternalProcessorConfig, pc *ProcessorCallbacks) error {
@@ -51,6 +53,9 @@ func Initialize(internalPc *InternalProcessorConfig, pc *ProcessorCallbacks) err
 
 	// set logger
 	logs = log.New(os.Stdout, fmt.Sprintf("[%s] ", conf.Name), log.LstdFlags|log.Lshortfile)
+
+	// set metrics
+	metricsClient = NewMetricsClient()
 
 	processorCtx = context.Background()
 	workerNotifyChannels = make([]chan<- string, 0)
@@ -151,6 +156,7 @@ func Run() error {
 		}
 
 		wg.Add(1)
+		metricsClient.EmitCounter("worker_num", "Number of workers", 1)
 	}
 
 	if transitionErr := transitToRunning(); transitionErr != nil {

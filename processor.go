@@ -7,9 +7,17 @@ import (
 	"io"
 	"net/http"
 	"runtime/debug"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func ProcessorHandle(w http.ResponseWriter, r *http.Request, pc *ProcessorCallbacks) {
+	switch r.URL.Path {
+	case "metrics":
+		promhttp.Handler().ServeHTTP(w, r)
+		return
+	}
+
 	resp := &InvokerResponse{}
 	var err error
 	defer func() {
