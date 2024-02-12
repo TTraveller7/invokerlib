@@ -65,3 +65,5 @@ const (
 )
 
 const CacheSize = 100 * 1024 * 1024
+
+const MetricsNamespace = "invoker"
