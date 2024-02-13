@@ -7,14 +7,13 @@ import (
 	"io"
 	"net/http"
 	"runtime/debug"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func ProcessorHandle(w http.ResponseWriter, r *http.Request, pc *ProcessorCallbacks) {
+	logs.Printf("received request from URL path %v", r.URL.Path)
 	switch r.URL.Path {
 	case "metrics":
-		promhttp.Handler().ServeHTTP(w, r)
+		metricsHandler().ServeHTTP(w, r)
 		return
 	}
 

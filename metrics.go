@@ -1,9 +1,11 @@
 package invokerlib
 
 import (
+	"net/http"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // What metrics should I have in the whole process?
@@ -42,4 +44,8 @@ func (m *MetricsClient) EmitCounter(name string, help string, val float64) error
 	c, _ := m.counters.Load(name)
 	c.(prometheus.Counter).Add(val)
 	return nil
+}
+
+func metricsHandler() http.Handler {
+	return promhttp.Handler()
 }

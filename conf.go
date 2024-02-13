@@ -36,6 +36,7 @@ type NamedKafkaConfig struct {
 // 4. upload file
 // 5. state store commit log and check pointing
 // 6. automatic # worker and partition adjustment
+// 7. cat needs a limit - works like head in this way
 
 type ProcessorConfig struct {
 	// ParentDirectory is the parent directory that stores user-defined go files.
