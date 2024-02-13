@@ -48,4 +48,3 @@ installprom:
 	kubectl wait --for=condition=Ready pods -l  app.kubernetes.io/name=prometheus-operator -n default
 	kubectl apply -f k8s_yaml/prometheus/role.yaml
 	kubectl apply -f k8s_yaml/prometheus/operator.yaml
-	kubectl wait --for=condition=Ready pods -l  app.kubernetes.io/name=prometheus -n default

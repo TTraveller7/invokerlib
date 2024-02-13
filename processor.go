@@ -10,9 +10,8 @@ import (
 )
 
 func ProcessorHandle(w http.ResponseWriter, r *http.Request, pc *ProcessorCallbacks) {
-	logs.Printf("received request from URL path %v", r.URL.Path)
 	switch r.URL.Path {
-	case "metrics":
+	case "/metrics":
 		metricsHandler().ServeHTTP(w, r)
 		return
 	}
