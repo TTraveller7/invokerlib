@@ -25,6 +25,8 @@ func AddStateStore(name string, stateStore StateStore) {
 }
 
 func cat(ctx context.Context) (ProcessorCatResult, error) {
+	limit := DefaultCatLimit
+
 	resp := make(map[string][]StateStoreEntry, 0)
 	for name, stateStore := range stateStores {
 		keys, err := stateStore.Keys(ctx)
@@ -33,6 +35,10 @@ func cat(ctx context.Context) (ProcessorCatResult, error) {
 		}
 		entries := make([]StateStoreEntry, 0)
 		for _, key := range keys {
+			if len(entries) >= limit {
+				break
+			}
+
 			val, err := stateStore.Get(ctx, key)
 			if err != nil {
 				return nil, err
