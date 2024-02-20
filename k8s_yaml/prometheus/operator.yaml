@@ -10,6 +10,7 @@ spec:
     requests:
       memory: 400Mi
   enableAdminAPI: false
+  scrapeInterval: "10s"
 
 ---
 
