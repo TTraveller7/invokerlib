@@ -45,11 +45,14 @@ func Work(ctx context.Context, workerIndex int, processFunc ProcessCallback, err
 		}
 		return nil
 	}
-	consumeFunc := func(record *Record) error {
-		if err := processFunc(ctx, record); err != nil {
-			return err
-		}
-		return nil
+	consumeFunc := func(record *Record) (consumeFuncErr error) {
+		defer func() {
+			if consumeFuncRecoverErr := recover(); consumeFuncRecoverErr != nil {
+				consumeFuncErr = fmt.Errorf("consumerFunc recovered from panic: %v", consumeFuncRecoverErr)
+			}
+		}()
+		consumeFuncErr = processFunc(ctx, record)
+		return
 	}
 	consumerGroupHandler := NewConsumerGroupHandler(logs, setupFunc, consumeFunc, workerNotifyChannel)
 

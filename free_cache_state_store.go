@@ -44,13 +44,12 @@ func (f *FreeCacheStateStore) Keys(ctx context.Context, limit int) ([]string, er
 	if l == 0 {
 		l = int(f.cli.EntryCount())
 	}
-	count := 0
-	for entry := iter.Next(); entry != nil; {
-		if count == l {
+	for i := 0; i < l; i++ {
+		entry := iter.Next()
+		if entry == nil {
 			break
 		}
 		keys = append(keys, string(entry.Key))
-		count++
 	}
 	return keys, nil
 }
