@@ -19,7 +19,7 @@ processorConfigs:
     - counter.go
     entryPoint: "CounterHandler"
     name: "counter"
-    numOfWorker: 3
+    numOfWorker: 1
     inputProcessor: "splitter"
     outputConfig: 
       defaultTopicPartitions: 0
