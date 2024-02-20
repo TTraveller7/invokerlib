@@ -32,9 +32,10 @@ build:
 install:
 	rm -f $(INSTALL_PATH)
 	cp target/fctl $(INSTALL_PATH)
+	scripts/fission_port_forward.sh
 
 load: 
-	fctl load -u "https://gutenberg.net.au/ebooks02/0200041.txt" -n "the_great_gatsby.txt" -t word_count_source
+	fctl load -u "https://www.gutenberg.org/cache/epub/4280/pg4280.txt" -n "the_critique_of_pure_reason.txt" -t word_count_source
 
 # prometheus
 

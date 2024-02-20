@@ -76,14 +76,19 @@ func (b *BigCacheStateStore) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (b *BigCacheStateStore) Keys(ctx context.Context) ([]string, error) {
+func (b *BigCacheStateStore) Keys(ctx context.Context, limit int) ([]string, error) {
 	keys := make([]string, 0)
 	if b.cli.Len() == 0 {
 		return keys, nil
 	}
 
+	l := limit
+	if limit == 0 {
+		l = b.cli.Len()
+	}
+
 	iter := b.cli.Iterator()
-	for {
+	for i := 0; i < l; i++ {
 		entry, err := iter.Value()
 		if err != nil {
 			return nil, err

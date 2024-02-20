@@ -15,7 +15,7 @@ type StateStore interface {
 	Put(ctx context.Context, key string, val []byte) error
 	PutWithExpireTime(ctx context.Context, key string, val []byte, expireSeconds int) error
 	Delete(ctx context.Context, key string) error
-	Keys(ctx context.Context) ([]string, error)
+	Keys(ctx context.Context, limit int) ([]string, error)
 }
 
 var stateStores map[string]StateStore = make(map[string]StateStore, 0)
@@ -29,16 +29,12 @@ func cat(ctx context.Context) (ProcessorCatResult, error) {
 
 	resp := make(map[string][]StateStoreEntry, 0)
 	for name, stateStore := range stateStores {
-		keys, err := stateStore.Keys(ctx)
+		keys, err := stateStore.Keys(ctx, limit)
 		if err != nil {
 			return nil, err
 		}
 		entries := make([]StateStoreEntry, 0)
 		for _, key := range keys {
-			if len(entries) >= limit {
-				break
-			}
-
 			val, err := stateStore.Get(ctx, key)
 			if err != nil {
 				return nil, err
