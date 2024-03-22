@@ -83,7 +83,7 @@ type RedisConfig struct {
 }
 
 type GlobalStoreConfig struct {
-	RedisConfigs []*RedisConfig
+	RedisConfigs []*RedisConfig `yaml:"redisConfigs"`
 }
 
 type RootConfig struct {
@@ -91,7 +91,7 @@ type RootConfig struct {
 	// must be provided.
 	ProcessorConfigs []*ProcessorConfig `yaml:"processorConfigs"`
 
-	// GlobalStoreConfigs defines all global stores used in the stream processing pipeline.
+	// GlobalStoreConfig defines all global stores used in the stream processing pipeline.
 	GlobalStoreConfig *GlobalStoreConfig `yaml:"globalStoreConfig"`
 
 	// GlobalKafkaConfig specifies which Kafka cluster the interim topics should be created on.
