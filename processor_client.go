@@ -26,6 +26,7 @@ func (pc *ProcessorClient) Initialize() (*InvokerResponse, error) {
 	ipc := &InternalProcessorConfig{
 		Name:              pc.ProcessorName,
 		GlobalKafkaConfig: rootConfig.GlobalKafkaConfig,
+		GlobalStoreConfig: rootConfig.GlobalStoreConfig,
 	}
 
 	kafkaAddr := rootConfig.GlobalKafkaConfig.Address
