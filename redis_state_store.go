@@ -13,9 +13,30 @@ type RedisStateStore struct {
 	cli *redis.Client
 }
 
-func NewRedisStateStore() (StateStore, error) {
-	// TODO
-	return nil, nil
+var redisConfigs map[string]*RedisConfig = make(map[string]*RedisConfig, 0)
+
+func NewRedisStateStore(name string) (StateStore, error) {
+	rc, exists := redisConfigs[name]
+	if !exists {
+		return nil, fmt.Errorf("redis state store config with name %s does not exist", name)
+	}
+	cli := redis.NewClient(&redis.Options{
+		Addr: rc.Address,
+	})
+	pingSuccess := false
+	for i := 0; i < RedisPingRetryTimes; i++ {
+		if err := cli.Ping(context.Background()).Err(); err == nil {
+			pingSuccess = true
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+	if !pingSuccess {
+		return nil, fmt.Errorf("redis state store %s cannot connect to address %s", rc.Name, rc.Address)
+	}
+	return &RedisStateStore{
+		cli: cli,
+	}, nil
 }
 
 func (r *RedisStateStore) Get(ctx context.Context, key string) ([]byte, error) {
@@ -44,7 +65,7 @@ func (r *RedisStateStore) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (r *RedisStateStore) Keys(ctx context.Context) ([]string, error) {
+func (r *RedisStateStore) Keys(ctx context.Context, limit int) ([]string, error) {
 	keys, err := r.cli.Keys(ctx, "*").Result()
 	if err != nil {
 		return nil, err

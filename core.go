@@ -49,6 +49,11 @@ func Initialize(internalPc *InternalProcessorConfig, pc *ProcessorCallbacks) err
 		return err
 	}
 	conf = internalPc
+	if conf.GlobalStoreConfig != nil {
+		for _, rc := range conf.GlobalStoreConfig.RedisConfigs {
+			redisConfigs[rc.Name] = rc
+		}
+	}
 	logs.Printf("internalProcessorConfig: %s", SafeJsonIndent(conf))
 
 	// set logger

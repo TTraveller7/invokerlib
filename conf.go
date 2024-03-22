@@ -77,17 +77,13 @@ type OutputConfig struct {
 	OutputKafkaConfigs []*NamedKafkaConfig `yaml:"outputKafkaConfigs"`
 }
 
+type RedisConfig struct {
+	Name    string `yaml:"name"`
+	Address string `yaml:"address"`
+}
+
 type GlobalStoreConfig struct {
-	// GlobaLStoreName is the name of a global store. The name of a global store should be unique among all global
-	// stores in a config.
-	GlobalStoreName string `yaml:"globalStoreName"`
-
-	// GlobalStoreType is the type of a global store. Refer to GlobalStateStoreTypes in state_store.go for
-	// possible store types.
-	GlobalStoreType string `yaml:"globalStoreType"`
-
-	// GlobalStoreSpec specifies further configuration of this global store.
-	GlobalStoreSpec map[string]string `yaml:"globalStoreSpec"`
+	RedisConfigs []*RedisConfig
 }
 
 type RootConfig struct {
@@ -96,7 +92,7 @@ type RootConfig struct {
 	ProcessorConfigs []*ProcessorConfig `yaml:"processorConfigs"`
 
 	// GlobalStoreConfigs defines all global stores used in the stream processing pipeline.
-	GlobalStoreConfigs []*GlobalStoreConfig `yaml:"globalStoreConfigs"`
+	GlobalStoreConfig *GlobalStoreConfig `yaml:"globalStoreConfig"`
 
 	// GlobalKafkaConfig specifies which Kafka cluster the interim topics should be created on.
 	GlobalKafkaConfig *GlobalKafkaConfig `yaml:"globalKafkaConfig"`
@@ -163,6 +159,22 @@ func (rc *RootConfig) Validate() error {
 		}
 	}
 
+	if rc.GlobalStoreConfig != nil {
+		redisNames := make(map[string]bool, 0)
+		for _, rc := range rc.GlobalStoreConfig.RedisConfigs {
+			if rc.Name == "" {
+				return fmt.Errorf("redis config name cannot be empty")
+			}
+			if redisNames[rc.Name] {
+				return fmt.Errorf("redis config name should not duplicate")
+			}
+			redisNames[rc.Name] = true
+			if rc.Address == "" {
+				return fmt.Errorf("redis config address cannot be empty")
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -173,6 +185,7 @@ type InternalProcessorConfig struct {
 	InputKafkaConfig         *KafkaConfig            `json:"input_kafka_config"`
 	DefaultOutputKafkaConfig *KafkaConfig            `json:"default_output_kafka_config"`
 	OutputKafkaConfigs       map[string]*KafkaConfig `json:"output_kafka_configs"`
+	GlobalStoreConfig        *GlobalStoreConfig      `json:"global_store_config"`
 }
 
 func (ipc *InternalProcessorConfig) Validate() error {

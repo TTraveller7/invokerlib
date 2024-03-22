@@ -29,3 +29,8 @@ globalKafkaConfig:
   initialTopics:
   - topic: "word_count_source"
     partitions: 3
+
+globalStoreConfig:
+  redisConfigs:
+  - name: "state-redis"
+    address: "state-redis:6379"
