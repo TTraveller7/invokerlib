@@ -70,5 +70,8 @@ func (r *RedisStateStore) Keys(ctx context.Context, limit int) ([]string, error)
 	if err != nil {
 		return nil, err
 	}
+	if len(keys) > DefaultCatLimit {
+		keys = keys[:DefaultCatLimit]
+	}
 	return keys, nil
 }
