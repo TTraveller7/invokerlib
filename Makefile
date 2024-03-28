@@ -27,7 +27,7 @@ applyk8s:
 	kubectl apply -f k8s_yaml/storage
 
 build:
-	cd fctl && go build -o ../target/fctl .
+	cd pkg/fctl && go build -o ../../target/fctl .
 
 install:
 	rm -f $(INSTALL_PATH)

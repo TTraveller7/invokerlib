@@ -1,0 +1,111 @@
+package api
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/TTraveller7/invokerlib/pkg/conf"
+	"github.com/TTraveller7/invokerlib/pkg/logs"
+)
+
+type ProcessorClient struct {
+	InvokerClient
+
+	ProcessorName string
+}
+
+func NewProcessorClient(processorName, url string) *ProcessorClient {
+	return &ProcessorClient{
+		InvokerClient: InvokerClient{
+			Cli: http.DefaultClient,
+			Url: url,
+		},
+		ProcessorName: processorName,
+	}
+}
+
+func (pc *ProcessorClient) Initialize() (*InvokerResponse, error) {
+	// build internal processor config from root config
+	ipc := &conf.InternalProcessorConfig{
+		Name:              pc.ProcessorName,
+		GlobalKafkaConfig: rootConfig.GlobalKafkaConfig,
+		GlobalStoreConfig: rootConfig.GlobalStoreConfig,
+	}
+
+	kafkaAddr := rootConfig.GlobalKafkaConfig.Address
+
+	for _, processConfig := range rootConfig.ProcessorConfigs {
+		if processConfig.Name != pc.ProcessorName {
+			continue
+		}
+
+		ipc.NumOfWorker = processConfig.NumOfWorker
+
+		if processConfig.InputKafkaConfig != nil {
+			ipc.InputKafkaConfig = processConfig.InputKafkaConfig
+		} else {
+			ipc.InputKafkaConfig = &conf.KafkaConfig{
+				Address: kafkaAddr,
+				Topic:   processConfig.InputProcessor,
+			}
+		}
+
+		if processConfig.OutputConfig.DefaultTopicPartitions > 0 {
+			ipc.DefaultOutputKafkaConfig = &conf.KafkaConfig{
+				Address: kafkaAddr,
+				Topic:   processConfig.Name,
+			}
+		}
+
+		outputMap := make(map[string]*conf.KafkaConfig, 0)
+		for _, outputProcessor := range processConfig.OutputConfig.OutputProcessors {
+			outputMap[outputProcessor] = &conf.KafkaConfig{
+				Address: kafkaAddr,
+				Topic:   outputProcessor,
+			}
+		}
+		for _, outputKafkaConfig := range processConfig.OutputConfig.OutputKafkaConfigs {
+			key := outputKafkaConfig.Name
+			val := &conf.KafkaConfig{
+				Address: outputKafkaConfig.Address,
+				Topic:   outputKafkaConfig.Topic,
+			}
+			outputMap[key] = val
+		}
+		ipc.OutputKafkaConfigs = outputMap
+	}
+	if ipc.InputKafkaConfig == nil {
+		err := fmt.Errorf("processor config for processor %s not found", pc.ProcessorName)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	params, err := MarshalToParams(ipc)
+	if err != nil {
+		err = fmt.Errorf("marshal InternalProcessorConfig to params failed: %v", err)
+		logs.Printf("%v", err)
+		return nil, err
+	}
+
+	resp, err := pc.SendCommand(params, ProcessorCommands.Initialize)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (pc *ProcessorClient) Run() (*InvokerResponse, error) {
+	resp, err := pc.SendCommand(NewInvokerRequestParams(), ProcessorCommands.Run)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (pc *ProcessorClient) Cat() (*InvokerResponse, error) {
+	resp, err := pc.SendCommand(NewInvokerRequestParams(), ProcessorCommands.Cat)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
