@@ -54,6 +54,12 @@ var (
 func MonitorHandle(w http.ResponseWriter, r *http.Request) {
 	logs.SetPrefix("[monitor] ")
 
+	switch r.URL.Path {
+	case "/metrics":
+		utils.MetricsHandler().ServeHTTP(w, r)
+		return
+	}
+
 	resp := &InvokerResponse{}
 	var err error
 	defer func() {
