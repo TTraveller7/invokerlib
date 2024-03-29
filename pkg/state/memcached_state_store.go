@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/TTraveller7/invokerlib/pkg/conf"
@@ -26,7 +27,8 @@ func NewMemcachedStateStore(name string) (StateStore, error) {
 }
 
 func (m *MemcachedStateStore) Get(ctx context.Context, key string) ([]byte, error) {
-	item, err := m.cli.Get(key)
+	base64Key := base64.StdEncoding.EncodeToString([]byte(key))
+	item, err := m.cli.Get(base64Key)
 	if err != nil {
 		return nil, fmt.Errorf("memcached state store Get failed: %v", err)
 	} else {
@@ -39,8 +41,9 @@ func (m *MemcachedStateStore) Put(ctx context.Context, key string, val []byte) e
 }
 
 func (m *MemcachedStateStore) PutWithExpireTime(ctx context.Context, key string, val []byte, expireSeconds int) error {
+	base64Key := base64.StdEncoding.EncodeToString([]byte(key))
 	item := &memcache.Item{
-		Key:        key,
+		Key:        base64Key,
 		Value:      val,
 		Expiration: int32(expireSeconds),
 	}
