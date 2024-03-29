@@ -1,23 +1,36 @@
 package models
 
 import (
+	"time"
+
 	"github.com/IBM/sarama"
 )
 
 type Record struct {
-	msg *sarama.ConsumerMessage
+	msgTimestamp time.Time
+	key          []byte
+	value        []byte
 }
 
-func NewRecord(msg *sarama.ConsumerMessage) *Record {
+func NewRecord(key, value []byte) *Record {
 	return &Record{
-		msg: msg,
+		key:   key,
+		value: value,
+	}
+}
+
+func NewRecordWithConsumerMessage(msg *sarama.ConsumerMessage) *Record {
+	return &Record{
+		msgTimestamp: msg.Timestamp,
+		key:          msg.Key,
+		value:        msg.Value,
 	}
 }
 
 func (r *Record) Key() []byte {
-	return r.msg.Key
+	return r.key
 }
 
 func (r *Record) Value() []byte {
-	return r.msg.Value
+	return r.value
 }

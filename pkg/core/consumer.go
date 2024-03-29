@@ -59,7 +59,7 @@ func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 				h.logs.Println("Message channel closed, exiting ConsumeClaim")
 				return nil
 			}
-			r := models.NewRecord(msg)
+			r := models.NewRecordWithConsumerMessage(msg)
 			if err := h.consume(r); err != nil {
 				metricsClient.EmitCounter("consume_error", "Number of messages that are not successfully consumed", 1)
 				return err
