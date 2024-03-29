@@ -15,7 +15,11 @@ type RedisStateStore struct {
 	cli *redis.Client
 }
 
-func NewRedisStateStore(rc *conf.RedisConfig) (StateStore, error) {
+func NewRedisStateStore(name string) (StateStore, error) {
+	rc := conf.GetRedisConfigByName(name)
+	if rc == nil {
+		return nil, fmt.Errorf("redis config with name %s not found", name)
+	}
 	cli := redis.NewClient(&redis.Options{
 		Addr: rc.Address,
 	})

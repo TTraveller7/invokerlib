@@ -212,3 +212,34 @@ type InternalKafkaConfig struct {
 	Topic      string
 	Partitions int
 }
+
+var (
+	c                       *InternalProcessorConfig
+	redisConfigs            map[string]*RedisConfig = make(map[string]*RedisConfig, 0)
+	ErrConfigNotInitialized                         = fmt.Errorf("config is not initialized")
+)
+
+func Config() *InternalProcessorConfig {
+	if c == nil {
+		panic(ErrConfigNotInitialized)
+	}
+	return c
+}
+
+func GetRedisConfigByName(name string) *RedisConfig {
+	return redisConfigs[name]
+}
+
+func LoadConfig(config *InternalProcessorConfig) error {
+	if err := config.Validate(); err != nil {
+		err = fmt.Errorf("validate internal processor config failed: %v", err)
+		return err
+	}
+	c = config
+	if c.GlobalStoreConfig != nil {
+		for _, rc := range c.GlobalStoreConfig.RedisConfigs {
+			redisConfigs[rc.Name] = rc
+		}
+	}
+	return nil
+}

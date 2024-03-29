@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/IBM/sarama"
+	"github.com/TTraveller7/invokerlib/pkg/conf"
 	"github.com/TTraveller7/invokerlib/pkg/models"
 )
 
@@ -30,6 +31,7 @@ func Work(ctx context.Context, workerIndex int, processFunc models.ProcessCallba
 	}()
 	logs.Printf("starts")
 
+	c := conf.Config()
 	consumerGroup, err := sarama.NewConsumerGroup([]string{c.InputKafkaConfig.Address}, c.Name, consumerConfig())
 	if err != nil {
 		workerErr = fmt.Errorf("initialize consumer group failed: %v", err)

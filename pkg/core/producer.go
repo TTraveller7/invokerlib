@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/IBM/sarama"
+	"github.com/TTraveller7/invokerlib/pkg/conf"
 )
 
 type Producer struct {
@@ -32,6 +33,7 @@ func initProducers() error {
 	producerConfig := sarama.NewConfig()
 	producerConfig.Producer.Return.Successes = true
 
+	c := conf.Config()
 	if c.DefaultOutputKafkaConfig != nil {
 		saramaProducer, err := sarama.NewSyncProducer([]string{c.DefaultOutputKafkaConfig.Address}, producerConfig)
 		if err != nil {

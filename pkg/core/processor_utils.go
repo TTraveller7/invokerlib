@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
+	"github.com/TTraveller7/invokerlib/pkg/conf"
 	"github.com/TTraveller7/invokerlib/pkg/models"
 )
 
@@ -21,6 +22,7 @@ func PassToDefaultOutputTopic(ctx context.Context, record *models.Record) error 
 }
 
 func PassToOutputTopic(ctx context.Context, name string, record *models.Record) error {
+	c := conf.Config()
 	kafkaDest, exists := c.OutputKafkaConfigs[name]
 	if !exists {
 		return fmt.Errorf("output topic with name %s does not exist", name)
