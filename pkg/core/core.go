@@ -13,8 +13,6 @@ import (
 )
 
 var (
-	c *conf.InternalProcessorConfig
-
 	processorCallbacks *models.ProcessorCallbacks
 
 	workerNotifyChannels []chan<- string
@@ -23,8 +21,6 @@ var (
 	processorCtx         context.Context
 
 	metricsClient *utils.MetricsClient
-
-	redisConfigs map[string]*conf.RedisConfig = make(map[string]*conf.RedisConfig, 0)
 )
 
 func Initialize(internalPc *conf.InternalProcessorConfig, pc *models.ProcessorCallbacks) error {
@@ -37,20 +33,15 @@ func Initialize(internalPc *conf.InternalProcessorConfig, pc *models.ProcessorCa
 	defer resetFunc()
 
 	// validate and load internal processor config
-	if err := internalPc.Validate(); err != nil {
-		err = fmt.Errorf("validate internal processor config failed: %v", err)
+	if err := conf.LoadConfig(internalPc); err != nil {
 		logs.Printf("%v\n", err)
 		return err
 	}
-	c = internalPc
-	if c.GlobalStoreConfig != nil {
-		for _, rc := range c.GlobalStoreConfig.RedisConfigs {
-			redisConfigs[rc.Name] = rc
-		}
-	}
+
+	c := conf.Config()
 	logs.Printf("internalProcessorConfig: %s", utils.SafeJsonIndent(c))
 
-	// set logger
+	// set logger prefix
 	logs.SetPrefix(fmt.Sprintf("[%s] ", c.Name))
 
 	// set metrics
@@ -127,6 +118,7 @@ func Run() error {
 		}
 	}()
 
+	c := conf.Config()
 	for i := 0; i < c.NumOfWorker; i++ {
 		workerCtx := utils.NewWorkerContext(processorCtx, i, c.Name)
 		// TODO: block or non-block?
