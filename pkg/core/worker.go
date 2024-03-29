@@ -53,6 +53,9 @@ func Work(ctx context.Context, workerIndex int, processFunc models.ProcessCallba
 			if consumeFuncRecoverErr := recover(); consumeFuncRecoverErr != nil {
 				consumeFuncErr = fmt.Errorf("consumerFunc recovered from panic: %v", consumeFuncRecoverErr)
 			}
+			if consumeFuncErr != nil {
+				logs.Printf("consumeFunc failed: %v", consumeFuncErr)
+			}
 		}()
 		consumeFuncErr = processFunc(ctx, record)
 		return
