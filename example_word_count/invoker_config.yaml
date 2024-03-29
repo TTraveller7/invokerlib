@@ -32,5 +32,8 @@ globalKafkaConfig:
 
 globalStoreConfig:
   redisConfigs:
-  - name: "state-redis"
-    address: "state-redis:6379"
+  - name: "state-memcached"
+    address: "state-memcached:6379"
+  memcachedConfigs:
+  - name: "state-memcached"
+    address: "state-memcached:11211"
