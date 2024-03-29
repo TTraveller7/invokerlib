@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: state-memcached
+  labels:
+    app: state-memcached
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: state-memcached
+  template:
+    metadata:
+      name: state-memcached
+      labels:
+        app: state-memcached
+    spec:
+      containers:
+        - name: memcached
+          image: memcached:1.6.26-alpine
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: state-memcached
+  labels:
+    app: state-memcached
+spec:
+  ports:
+    - port: 11211
+      targetPort: 11211
+  selector: 
+    app: state-memcached
+  type: ClusterIP

@@ -2,7 +2,10 @@ package state
 
 import (
 	"context"
+	"fmt"
 )
+
+var ErrNotImplemented error = fmt.Errorf("Not Implemented")
 
 type StateStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)

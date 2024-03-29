@@ -82,8 +82,14 @@ type RedisConfig struct {
 	Address string `yaml:"address"`
 }
 
+type MemcachedConfig struct {
+	Name      string   `yaml:"name"`
+	Addresses []string `yaml:"addresses"`
+}
+
 type GlobalStoreConfig struct {
-	RedisConfigs []*RedisConfig `yaml:"redisConfigs"`
+	RedisConfigs     []*RedisConfig     `yaml:"redisConfigs"`
+	MemcachedConfigs []*MemcachedConfig `yaml:"memcachedConfigs"`
 }
 
 type RootConfig struct {
@@ -161,16 +167,29 @@ func (rc *RootConfig) Validate() error {
 
 	if rc.GlobalStoreConfig != nil {
 		redisNames := make(map[string]bool, 0)
-		for _, rc := range rc.GlobalStoreConfig.RedisConfigs {
-			if rc.Name == "" {
+		for _, redisConfig := range rc.GlobalStoreConfig.RedisConfigs {
+			if redisConfig.Name == "" {
 				return fmt.Errorf("redis config name cannot be empty")
 			}
-			if redisNames[rc.Name] {
+			if redisNames[redisConfig.Name] {
 				return fmt.Errorf("redis config name should not duplicate")
 			}
-			redisNames[rc.Name] = true
-			if rc.Address == "" {
+			redisNames[redisConfig.Name] = true
+			if redisConfig.Address == "" {
 				return fmt.Errorf("redis config address cannot be empty")
+			}
+		}
+		memcachedNames := make(map[string]bool, 0)
+		for _, mc := range rc.GlobalStoreConfig.MemcachedConfigs {
+			if mc.Name == "" {
+				return fmt.Errorf("memcached config name cannot be empty")
+			}
+			if memcachedNames[mc.Name] {
+				return fmt.Errorf("memcached config name should not duplicate")
+			}
+			memcachedNames[mc.Name] = true
+			if len(mc.Addresses) == 0 {
+				return fmt.Errorf("memcached config address cannot be empty")
 			}
 		}
 	}
@@ -215,8 +234,9 @@ type InternalKafkaConfig struct {
 
 var (
 	c                       *InternalProcessorConfig
-	redisConfigs            map[string]*RedisConfig = make(map[string]*RedisConfig, 0)
-	ErrConfigNotInitialized                         = fmt.Errorf("config is not initialized")
+	redisConfigs            map[string]*RedisConfig     = make(map[string]*RedisConfig, 0)
+	memcachedConfigs        map[string]*MemcachedConfig = make(map[string]*MemcachedConfig, 0)
+	ErrConfigNotInitialized                             = fmt.Errorf("config is not initialized")
 )
 
 func Config() *InternalProcessorConfig {
@@ -230,6 +250,10 @@ func GetRedisConfigByName(name string) *RedisConfig {
 	return redisConfigs[name]
 }
 
+func GetMemcachedConfigByName(name string) *MemcachedConfig {
+	return memcachedConfigs[name]
+}
+
 func LoadConfig(config *InternalProcessorConfig) error {
 	if err := config.Validate(); err != nil {
 		err = fmt.Errorf("validate internal processor config failed: %v", err)
@@ -239,6 +263,9 @@ func LoadConfig(config *InternalProcessorConfig) error {
 	if c.GlobalStoreConfig != nil {
 		for _, rc := range c.GlobalStoreConfig.RedisConfigs {
 			redisConfigs[rc.Name] = rc
+		}
+		for _, mc := range c.GlobalStoreConfig.MemcachedConfigs {
+			memcachedConfigs[mc.Name] = mc
 		}
 	}
 	return nil
