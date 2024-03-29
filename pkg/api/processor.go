@@ -146,6 +146,7 @@ func cat(ctx context.Context) (ProcessorCatResult, error) {
 	limit := consts.DefaultCatLimit
 
 	resp := make(map[string][]StateStoreEntry, 0)
+	stateStores := state.StateStores()
 	for name, stateStore := range stateStores {
 		keys, err := stateStore.Keys(ctx, limit)
 		if err != nil {
@@ -165,10 +166,4 @@ func cat(ctx context.Context) (ProcessorCatResult, error) {
 		resp[name] = entries
 	}
 	return resp, nil
-}
-
-var stateStores map[string]state.StateStore = make(map[string]state.StateStore, 0)
-
-func AddStateStore(name string, stateStore state.StateStore) {
-	stateStores[name] = stateStore
 }

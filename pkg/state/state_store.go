@@ -11,3 +11,13 @@ type StateStore interface {
 	Delete(ctx context.Context, key string) error
 	Keys(ctx context.Context, limit int) ([]string, error)
 }
+
+var stateStores map[string]StateStore = make(map[string]StateStore, 0)
+
+func AddStateStore(name string, stateStore StateStore) {
+	stateStores[name] = stateStore
+}
+
+func StateStores() map[string]StateStore {
+	return stateStores
+}
