@@ -42,6 +42,7 @@ func (h *workerConsumerHandler) Setup(session sarama.ConsumerGroupSession) error
 
 	// signals to the main routine that this worker joins the consumer group already
 	h.once.Do(func() {
+		h.logs.Println("closing worker ready channel")
 		close(h.workerReadyChannel)
 	})
 
