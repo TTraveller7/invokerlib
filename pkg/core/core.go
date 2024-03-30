@@ -157,7 +157,7 @@ func Run() error {
 			workerErrorChannel := make(chan error, 1)
 			workerErrorChannels = append(workerErrorChannels, workerErrorChannel)
 
-			workerReadyChannel := make(chan struct{})
+			workerReadyChannel := make(chan struct{}, 1)
 			workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
 
 			go Work(workerCtx, consumerConfig, i, processorCallbacks.Process, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
@@ -169,7 +169,7 @@ func Run() error {
 	for i := 0; i < workerTotalCount; i++ {
 		select {
 		case <-workerReadyChannels[i]:
-			// do nothing
+			logs.Printf("worker %v is ready", i)
 		case workerErr := <-workerErrorChannels[i]:
 			// this worker does not start successfully, try to exit
 
