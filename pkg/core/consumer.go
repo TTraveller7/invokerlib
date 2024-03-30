@@ -2,6 +2,7 @@ package core
 
 import (
 	"log"
+	"sync"
 
 	"github.com/IBM/sarama"
 	"github.com/TTraveller7/invokerlib/pkg/models"
@@ -32,22 +33,30 @@ type workerConsumerHandler struct {
 	setup               func() error
 	consume             func(record *models.Record) error
 	workerNotifyChannel <-chan string
+	workerReadyChannel  chan<- struct{}
+	once                sync.Once
 }
 
-func (h workerConsumerHandler) Setup(session sarama.ConsumerGroupSession) error {
+func (h *workerConsumerHandler) Setup(session sarama.ConsumerGroupSession) error {
 	h.logs.Println("Consumer Setup invoked")
+
+	// signals to the main routine that this worker joins the consumer group already
+	h.once.Do(func() {
+		close(h.workerReadyChannel)
+	})
+
 	if h.setup != nil {
 		return h.setup()
 	}
 	return nil
 }
 
-func (h workerConsumerHandler) Cleanup(session sarama.ConsumerGroupSession) error {
+func (h *workerConsumerHandler) Cleanup(session sarama.ConsumerGroupSession) error {
 	h.logs.Println("Consumer Cleanup invoked")
 	return nil
 }
 
-func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
+func (h *workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 	claim sarama.ConsumerGroupClaim) error {
 
 	h.logs.Println("Consumer ConsumeClaim invoked")
@@ -75,7 +84,7 @@ func (h workerConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 }
 
 func NewConsumerGroupHandler(logs *log.Logger, setupFunc func() error, consumeFunc func(record *models.Record) error,
-	workerNotifyChannel <-chan string) sarama.ConsumerGroupHandler {
+	workerNotifyChannel <-chan string, workerReadyChannel chan<- struct{}) sarama.ConsumerGroupHandler {
 
 	return &workerConsumerHandler{
 		logs:                logs,
