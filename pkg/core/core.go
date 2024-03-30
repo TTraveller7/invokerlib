@@ -141,6 +141,12 @@ func Run() error {
 	}()
 
 	c := conf.Config()
+	workerTotalCount := 0
+	for _, consumerConfig := range c.ConsumerConfigs {
+		workerTotalCount += consumerConfig.NumOfWorkers
+	}
+	workerReadyChannels := make([]chan struct{}, workerTotalCount)
+
 	for _, consumerConfig := range c.ConsumerConfigs {
 		for i := 0; i < consumerConfig.NumOfWorkers; i++ {
 			workerCtx := utils.NewWorkerContext(processorCtx, i, c.Name, consumerConfig.Topic)
@@ -152,28 +158,33 @@ func Run() error {
 			workerErrorChannels = append(workerErrorChannels, workerErrorChannel)
 
 			workerReadyChannel := make(chan struct{})
+			workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
 
 			go Work(workerCtx, consumerConfig, i, processorCallbacks.Process, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
-
-			select {
-			case <-workerReadyChannel:
-				logs.Printf("worker #%v starts successfully", i)
-			case workerErr := <-workerReadyChannel:
-				// this worker does not start successfully, try to exit
-
-				// reset previous transition
-				resetFunc()
-				hasReset = true
-
-				// stop workers, close producers and consumer group
-				Exit()
-
-				return fmt.Errorf("start worker #%v failed: %v", i, workerErr)
-			}
 
 			metricsClient.EmitCounter("worker_num", "Number of workers", 1)
 		}
 	}
+
+	for i := 0; i < workerTotalCount; i++ {
+		select {
+		case <-workerReadyChannels[i]:
+			// do nothing
+		case workerErr := <-workerErrorChannels[i]:
+			// this worker does not start successfully, try to exit
+
+			// reset previous transition
+			resetFunc()
+			hasReset = true
+
+			// stop workers, close producers and consumer group
+			Exit()
+
+			return fmt.Errorf("start worker #%v failed: %v", i, workerErr)
+		}
+	}
+
+	logs.Printf("all %v orkers start successfully", workerTotalCount)
 
 	if transitionErr := transitToRunning(); transitionErr != nil {
 		err := fmt.Errorf("transit to running failed: %v", transitionErr)

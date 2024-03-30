@@ -21,7 +21,7 @@ processorConfigs:
     entryPoint: "CounterHandler"
     name: "counter"
     type: "process"
-    numOfWorker: 1
+    numOfWorker: 3
     inputProcessors:
     - splitter
     outputConfig: 
