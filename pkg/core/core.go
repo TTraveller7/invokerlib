@@ -155,24 +155,20 @@ func Run() error {
 
 			go Work(workerCtx, consumerConfig, i, processorCallbacks.Process, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
 
-			isReady := false
-			for !isReady {
-				select {
-				case <-workerReadyChannel:
-					logs.Printf("worker #%v starts successfully", i)
-					isReady = true
-				case workerErr := <-workerReadyChannel:
-					// this worker does not start successfully, try to exit
+			select {
+			case <-workerReadyChannel:
+				logs.Printf("worker #%v starts successfully", i)
+			case workerErr := <-workerReadyChannel:
+				// this worker does not start successfully, try to exit
 
-					// reset previous transition
-					resetFunc()
-					hasReset = true
+				// reset previous transition
+				resetFunc()
+				hasReset = true
 
-					// stop workers, close producers and consumer group
-					Exit()
+				// stop workers, close producers and consumer group
+				Exit()
 
-					return fmt.Errorf("start worker #%v failed: %v", i, workerErr)
-				}
+				return fmt.Errorf("start worker #%v failed: %v", i, workerErr)
 			}
 
 			metricsClient.EmitCounter("worker_num", "Number of workers", 1)
