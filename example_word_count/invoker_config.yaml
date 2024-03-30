@@ -6,9 +6,10 @@ processorConfigs:
     - splitter.go
     entryPoint: "SplitterHandler"
     name: "splitter"
+    type: "process"
     numOfWorker: 3
-    inputKafkaConfig: 
-      address: "kafka:9092"
+    inputKafkaConfigs: 
+    - address: "kafka:9092"
       topic: "word_count_source"
     outputConfig: 
       defaultTopicPartitions: 3
@@ -19,8 +20,10 @@ processorConfigs:
     - counter.go
     entryPoint: "CounterHandler"
     name: "counter"
+    type: "process"
     numOfWorker: 1
-    inputProcessor: "splitter"
+    inputProcessors:
+    - splitter
     outputConfig: 
       defaultTopicPartitions: 0
 

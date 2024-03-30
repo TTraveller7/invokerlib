@@ -1,11 +1,12 @@
 package consts
 
-type ContextKey string
+type contextKey string
 
 const (
-	CTX_KEY_INVOKER_LIB_PROCESSOR_NAME = ContextKey("invoker_lib_processor_name")
-	CTX_KEY_INVOKER_LIB_WORKER_ID      = ContextKey("invoker_lib_worker_id")
-	CTX_KEY_INVOKER_LIB_WORKER_INDEX   = ContextKey("invoker_lib_worker_index")
+	CTX_KEY_INVOKER_LIB_PROCESSOR_NAME = contextKey("invoker_lib_processor_name")
+	CTX_KEY_INVOKER_LIB_WORKER_ID      = contextKey("invoker_lib_worker_id")
+	CTX_KEY_INVOKER_LIB_WORKER_INDEX   = contextKey("invoker_lib_worker_index")
+	CTX_KEY_INVOKER_LIB_WORKER_TOPIC   = contextKey("invoker_lib_worker_topic")
 )
 
 const (
@@ -25,3 +26,8 @@ const MetricsNamespace = "invoker"
 const DefaultCatLimit = 1000
 
 const RedisPingRetryTimes = 3
+
+const (
+	ProcessorTypeProcess = "process"
+	ProcessorTypeJoin    = "join"
+)

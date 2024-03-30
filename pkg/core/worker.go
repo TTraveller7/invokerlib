@@ -12,10 +12,11 @@ import (
 	"github.com/TTraveller7/invokerlib/pkg/models"
 )
 
-func Work(ctx context.Context, workerIndex int, processFunc models.ProcessCallback, errCh chan<- error, wg *sync.WaitGroup,
-	workerNotifyChannel <-chan string, workerReadyChannel chan<- bool) {
-
-	logs := log.New(os.Stdout, fmt.Sprintf("[worker #%v] ", workerIndex), log.LstdFlags|log.Lshortfile)
+func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex int, processFunc models.ProcessCallback,
+	errCh chan<- error, wg *sync.WaitGroup, workerNotifyChannel <-chan string, workerReadyChannel chan<- struct{}) {
+	// set up worker logger
+	logPrefix := fmt.Sprintf("[worker-%s-%v] ", consumerConfig.Topic, workerIndex)
+	logs := log.New(os.Stdout, logPrefix, log.LstdFlags|log.Lshortfile)
 
 	var workerErr error
 	defer func() {
@@ -26,18 +27,22 @@ func Work(ctx context.Context, workerIndex int, processFunc models.ProcessCallba
 		if workerErr != nil {
 			errCh <- workerErr
 		}
+		close(errCh)
 		wg.Done()
 		logs.Printf("ends")
 	}()
+
 	logs.Printf("starts")
 
-	c := conf.Config()
-	consumerGroup, err := sarama.NewConsumerGroup([]string{c.InputKafkaConfig.Address}, c.Name, consumerConfig())
+	// init consumer group
+	consumerGroup, err := sarama.NewConsumerGroup([]string{consumerConfig.Address}, consumerConfig.Topic,
+		defaultSaramaConsumerConfig())
 	if err != nil {
 		workerErr = fmt.Errorf("initialize consumer group failed: %v", err)
 		logs.Printf("%v", workerErr)
 		return
 	}
+	consumerGroups = append(consumerGroups, consumerGroup)
 
 	isReady := false
 	setupFunc := func() error {
@@ -67,7 +72,7 @@ func Work(ctx context.Context, workerIndex int, processFunc models.ProcessCallba
 		count++
 		logs.Printf("consume loop #%v starts", count)
 
-		if err := consumerGroup.Consume(ctx, []string{c.InputKafkaConfig.Topic}, consumerGroupHandler); err == ErrConsumerNotify {
+		if err := consumerGroup.Consume(ctx, []string{consumerConfig.Topic}, consumerGroupHandler); err == ErrConsumerNotify {
 			return
 		} else if err != nil {
 			logs.Printf("consume returns error: %v", err)

@@ -1,6 +1,10 @@
 package conf
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/TTraveller7/invokerlib/pkg/consts"
+)
 
 type InitialTopic struct {
 	Topic      string `yaml:"topic"`
@@ -52,14 +56,16 @@ type ProcessorConfig struct {
 	// Name is the name of the processor, which should be unique among all processors in a config.
 	Name string `yaml:"name"`
 
+	Type string `yaml:"type"`
+
 	// NumOfWorker defines the number of workers in processor. Note that the number of parallel workers
 	// in a processor is capped by the number of partitions in that processor's source Kafka topic.
 	NumOfWorker int `yaml:"numOfWorker"`
 
-	// InputProcessor and InputKafkaConfig defines the source of a processor's input. Either InputProcessor
+	// InputProcessors and InputKafkaConfigs define the source of a processor's input. Either InputProcessor
 	// or InputKafkaConfig must be not empty. If both are specified, InputKafkaConfig will be used.
-	InputProcessor   string       `yaml:"inputProcessor"`
-	InputKafkaConfig *KafkaConfig `yaml:"inputKafkaConfig"`
+	InputProcessors   []string       `yaml:"inputProcessors"`
+	InputKafkaConfigs []*KafkaConfig `yaml:"inputKafkaConfigs"`
 
 	// OutputConfig defines the output of a processor's input. OutputConfig must be specified in a config.
 	OutputConfig *OutputConfig `yaml:"outputConfig"`
@@ -110,20 +116,36 @@ func (rc *RootConfig) Validate() error {
 	}
 	processorNameSet := make(map[string]bool, 0)
 	for _, pc := range rc.ProcessorConfigs {
+		// check name
 		if pc.Name == "" {
 			return fmt.Errorf("processor name cannot be empty")
 		}
 		name := pc.Name
-		if pc.EntryPoint == "" {
-			return fmt.Errorf("processor %s entrypoint cannot be empty", name)
-		}
 		if processorNameSet[name] {
 			return fmt.Errorf("duplicate processor name %s", name)
 		}
 		processorNameSet[name] = true
-		if pc.InputProcessor == "" && pc.InputKafkaConfig == nil {
-			return fmt.Errorf("no source is specified for processor %s", name)
+
+		// check entrypoint
+		if pc.EntryPoint == "" {
+			return fmt.Errorf("processor %s entrypoint cannot be empty", name)
 		}
+
+		// check type and input config based on type
+		inputCount := len(pc.InputProcessors) + len(pc.InputKafkaConfigs)
+		switch pc.Type {
+		case consts.ProcessorTypeProcess:
+			if inputCount != 1 {
+				return fmt.Errorf("processor with type=process must have one and only one input source")
+			}
+		case consts.ProcessorTypeJoin:
+			if inputCount <= 1 {
+				return fmt.Errorf("processor with type=join must have more than one input sources")
+			}
+		default:
+			return consts.ErrProcessorTypeNotRecognized
+		}
+
 		if pc.NumOfWorker <= 0 {
 			return fmt.Errorf("NumOfWorker must be greater than 0 for processor %s", name)
 		}
@@ -134,11 +156,33 @@ func (rc *RootConfig) Validate() error {
 			return fmt.Errorf("DefaultTopicPartitions must be greater than or equal to 0 for processor %s", name)
 		}
 	}
+
+	// check input processor name
 	for _, pc := range rc.ProcessorConfigs {
-		srcName := pc.InputProcessor
-		if len(srcName) > 0 && !processorNameSet[srcName] {
-			return fmt.Errorf("InputFunction %s for processor %s does not exist", srcName, pc.Name)
+		for _, n := range pc.InputProcessors {
+			if len(n) == 0 {
+				return fmt.Errorf("input processor name cannot be empty")
+			}
+			if !processorNameSet[n] {
+				return fmt.Errorf("input processor %s does not exist", n)
+			}
 		}
+	}
+
+	// check input kafka config
+	for _, pc := range rc.ProcessorConfigs {
+		for _, kc := range pc.InputKafkaConfigs {
+			if kc.Address == "" {
+				return consts.ErrKakfaAddressEmpty("inputKafkaConfigs")
+			}
+			if kc.Topic == "" {
+				return consts.ErrKafkaTopicEmpty("inputKafkaConfigs")
+			}
+		}
+	}
+
+	// check output processor config
+	for _, pc := range rc.ProcessorConfigs {
 		okcNameSet := make(map[string]bool, 0)
 		for _, okc := range pc.OutputConfig.OutputKafkaConfigs {
 			if processorNameSet[okc.Name] {
@@ -197,28 +241,104 @@ func (rc *RootConfig) Validate() error {
 	return nil
 }
 
+type ConsumerConfig struct {
+	Address      string `json:"address"`
+	Topic        string `json:"topic"`
+	NumOfWorkers int    `json:"num_of_workers"`
+}
+
 type InternalProcessorConfig struct {
 	Name                     string                  `json:"name"`
+	Type                     string                  `json:"type"`
 	GlobalKafkaConfig        *GlobalKafkaConfig      `json:"global_kafka_config"`
-	NumOfWorker              int                     `json:"num_of_worker"`
-	InputKafkaConfig         *KafkaConfig            `json:"input_kafka_config"`
+	ConsumerConfigs          []*ConsumerConfig       `json:"consumer_configs"`
 	DefaultOutputKafkaConfig *KafkaConfig            `json:"default_output_kafka_config"`
 	OutputKafkaConfigs       map[string]*KafkaConfig `json:"output_kafka_configs"`
 	GlobalStoreConfig        *GlobalStoreConfig      `json:"global_store_config"`
+}
+
+func NewInternalProcessorConfig(rootConfig *RootConfig, processorName string) *InternalProcessorConfig {
+	ipc := &InternalProcessorConfig{
+		Name:              processorName,
+		GlobalKafkaConfig: rootConfig.GlobalKafkaConfig,
+		GlobalStoreConfig: rootConfig.GlobalStoreConfig,
+	}
+
+	kafkaAddr := rootConfig.GlobalKafkaConfig.Address
+	for _, processorConfig := range rootConfig.ProcessorConfigs {
+		if processorConfig.Name != processorName {
+			continue
+		}
+
+		consumerConfigs := make([]*ConsumerConfig, 0)
+		for _, inputProcessor := range processorConfig.InputProcessors {
+			cc := &ConsumerConfig{
+				Address:      kafkaAddr,
+				Topic:        inputProcessor,
+				NumOfWorkers: processorConfig.NumOfWorker,
+			}
+			consumerConfigs = append(consumerConfigs, cc)
+		}
+		for _, inputKakfaConfig := range processorConfig.InputKafkaConfigs {
+			cc := &ConsumerConfig{
+				Address:      inputKakfaConfig.Address,
+				Topic:        inputKakfaConfig.Topic,
+				NumOfWorkers: processorConfig.NumOfWorker,
+			}
+			consumerConfigs = append(consumerConfigs, cc)
+		}
+		ipc.ConsumerConfigs = consumerConfigs
+
+		if processorConfig.OutputConfig.DefaultTopicPartitions > 0 {
+			ipc.DefaultOutputKafkaConfig = &KafkaConfig{
+				Address: kafkaAddr,
+				Topic:   processorConfig.Name,
+			}
+		}
+
+		outputMap := make(map[string]*KafkaConfig, 0)
+		for _, outputProcessor := range processorConfig.OutputConfig.OutputProcessors {
+			outputMap[outputProcessor] = &KafkaConfig{
+				Address: kafkaAddr,
+				Topic:   outputProcessor,
+			}
+		}
+		for _, outputKafkaConfig := range processorConfig.OutputConfig.OutputKafkaConfigs {
+			key := outputKafkaConfig.Name
+			val := &KafkaConfig{
+				Address: outputKafkaConfig.Address,
+				Topic:   outputKafkaConfig.Topic,
+			}
+			outputMap[key] = val
+		}
+		ipc.OutputKafkaConfigs = outputMap
+	}
+	return ipc
 }
 
 func (ipc *InternalProcessorConfig) Validate() error {
 	if ipc.Name == "" {
 		return fmt.Errorf("processor name should not be empty")
 	}
+	if ipc.Type == "" {
+		return fmt.Errorf("processor type should not be empty")
+	}
 	if ipc.GlobalKafkaConfig == nil {
 		return fmt.Errorf("global kafka config should be nil")
 	}
-	if ipc.NumOfWorker == 0 {
-		return fmt.Errorf("number of worker should not be 0")
+	if len(ipc.ConsumerConfigs) == 0 {
+		return fmt.Errorf("consumer configs should not be empty")
 	}
-	if ipc.InputKafkaConfig == nil {
-		return fmt.Errorf("input kafka config should not be nil")
+	for _, cc := range ipc.ConsumerConfigs {
+		if cc.Address == "" {
+			return fmt.Errorf("consumer config address should not be empty")
+		}
+		if cc.Topic == "" {
+			return fmt.Errorf("consumer config topic should not be empty")
+		}
+		if cc.NumOfWorkers <= 0 {
+			return fmt.Errorf("consumer numOfWorker must be positive")
+		}
 	}
 	if ipc.OutputKafkaConfigs == nil {
 		ipc.OutputKafkaConfigs = make(map[string]*KafkaConfig, 0)
@@ -233,15 +353,14 @@ type InternalKafkaConfig struct {
 }
 
 var (
-	c                       *InternalProcessorConfig
-	redisConfigs            map[string]*RedisConfig     = make(map[string]*RedisConfig, 0)
-	memcachedConfigs        map[string]*MemcachedConfig = make(map[string]*MemcachedConfig, 0)
-	ErrConfigNotInitialized                             = fmt.Errorf("config is not initialized")
+	c                *InternalProcessorConfig
+	redisConfigs     map[string]*RedisConfig     = make(map[string]*RedisConfig, 0)
+	memcachedConfigs map[string]*MemcachedConfig = make(map[string]*MemcachedConfig, 0)
 )
 
 func Config() *InternalProcessorConfig {
 	if c == nil {
-		panic(ErrConfigNotInitialized)
+		panic(consts.ErrConfigNotInitialized)
 	}
 	return c
 }

@@ -15,7 +15,7 @@ func initConsumer() error {
 	return nil
 }
 
-func consumerConfig() *sarama.Config {
+func defaultSaramaConsumerConfig() *sarama.Config {
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_0_0_0
 
