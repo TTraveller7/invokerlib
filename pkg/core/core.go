@@ -22,6 +22,8 @@ var (
 	// channels for workers to send errors out
 	workerErrorChannels []<-chan error
 
+	workerReadyChannels []<-chan struct{}
+
 	wg *sync.WaitGroup
 
 	processorCtx context.Context
@@ -145,7 +147,7 @@ func Run() error {
 	for _, consumerConfig := range c.ConsumerConfigs {
 		workerTotalCount += consumerConfig.NumOfWorkers
 	}
-	workerReadyChannels := make([]chan struct{}, workerTotalCount)
+	workerReadyChannels = make([]<-chan struct{}, workerTotalCount)
 
 	for _, consumerConfig := range c.ConsumerConfigs {
 		for i := 0; i < consumerConfig.NumOfWorkers; i++ {
@@ -157,7 +159,7 @@ func Run() error {
 			workerErrorChannel := make(chan error, 1)
 			workerErrorChannels = append(workerErrorChannels, workerErrorChannel)
 
-			workerReadyChannel := make(chan struct{}, 1)
+			workerReadyChannel := make(chan struct{})
 			workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
 
 			go Work(workerCtx, consumerConfig, i, processorCallbacks.Process, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
@@ -168,10 +170,8 @@ func Run() error {
 
 	for i := 0; i < workerTotalCount; i++ {
 		select {
-		case <-workerReadyChannels[i]:
-			logs.Printf("worker %v is ready", i)
 		case workerErr := <-workerErrorChannels[i]:
-			// this worker does not start successfully, try to exit
+			// some worker does not start successfully, try to exit
 
 			// reset previous transition
 			resetFunc()
@@ -181,6 +181,7 @@ func Run() error {
 			Exit()
 
 			return fmt.Errorf("start worker #%v failed: %v", i, workerErr)
+		default:
 		}
 	}
 
