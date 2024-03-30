@@ -270,6 +270,8 @@ func NewInternalProcessorConfig(rootConfig *RootConfig, processorName string) *I
 			continue
 		}
 
+		ipc.Type = processorConfig.Type
+
 		consumerConfigs := make([]*ConsumerConfig, 0)
 		for _, inputProcessor := range processorConfig.InputProcessors {
 			cc := &ConsumerConfig{
