@@ -26,56 +26,9 @@ func NewProcessorClient(processorName, url string) *ProcessorClient {
 
 func (pc *ProcessorClient) Initialize() (*InvokerResponse, error) {
 	// build internal processor config from root config
-	ipc := &conf.InternalProcessorConfig{
-		Name:              pc.ProcessorName,
-		GlobalKafkaConfig: rootConfig.GlobalKafkaConfig,
-		GlobalStoreConfig: rootConfig.GlobalStoreConfig,
-	}
-
-	kafkaAddr := rootConfig.GlobalKafkaConfig.Address
-
-	for _, processConfig := range rootConfig.ProcessorConfigs {
-		if processConfig.Name != pc.ProcessorName {
-			continue
-		}
-
-		ipc.NumOfWorker = processConfig.NumOfWorker
-
-		if processConfig.InputKafkaConfig != nil {
-			ipc.InputKafkaConfig = processConfig.InputKafkaConfig
-		} else {
-			ipc.InputKafkaConfig = &conf.KafkaConfig{
-				Address: kafkaAddr,
-				Topic:   processConfig.InputProcessor,
-			}
-		}
-
-		if processConfig.OutputConfig.DefaultTopicPartitions > 0 {
-			ipc.DefaultOutputKafkaConfig = &conf.KafkaConfig{
-				Address: kafkaAddr,
-				Topic:   processConfig.Name,
-			}
-		}
-
-		outputMap := make(map[string]*conf.KafkaConfig, 0)
-		for _, outputProcessor := range processConfig.OutputConfig.OutputProcessors {
-			outputMap[outputProcessor] = &conf.KafkaConfig{
-				Address: kafkaAddr,
-				Topic:   outputProcessor,
-			}
-		}
-		for _, outputKafkaConfig := range processConfig.OutputConfig.OutputKafkaConfigs {
-			key := outputKafkaConfig.Name
-			val := &conf.KafkaConfig{
-				Address: outputKafkaConfig.Address,
-				Topic:   outputKafkaConfig.Topic,
-			}
-			outputMap[key] = val
-		}
-		ipc.OutputKafkaConfigs = outputMap
-	}
-	if ipc.InputKafkaConfig == nil {
-		err := fmt.Errorf("processor config for processor %s not found", pc.ProcessorName)
+	ipc := conf.NewInternalProcessorConfig(rootConfig, pc.ProcessorName)
+	if err := ipc.Validate(); err != nil {
+		err := fmt.Errorf("validate config failed: processorName=%s, error=%v", pc.ProcessorName, err)
 		logs.Printf("%v", err)
 		return nil, err
 	}

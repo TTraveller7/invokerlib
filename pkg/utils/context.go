@@ -26,12 +26,14 @@ func WorkerIndex(ctx context.Context) (string, bool) {
 	return loadValue(ctx, consts.CTX_KEY_INVOKER_LIB_WORKER_INDEX)
 }
 
-func NewWorkerContext(processorCtx context.Context, workerIndex int, processorName string) context.Context {
+func NewWorkerContext(processorCtx context.Context, workerIndex int, processorName string,
+	topicName string) context.Context {
 	if _, exists := WorkerId(processorCtx); exists {
 		return processorCtx
 	}
-	workerId := NewWorkerId(workerIndex, processorName)
+	workerId := NewWorkerId(workerIndex, processorName, topicName)
 	ctx := context.WithValue(processorCtx, consts.CTX_KEY_INVOKER_LIB_WORKER_ID, workerId)
 	ctx = context.WithValue(ctx, consts.CTX_KEY_INVOKER_LIB_WORKER_INDEX, workerIndex)
+	ctx = context.WithValue(ctx, consts.CTX_KEY_INVOKER_LIB_WORKER_TOPIC, topicName)
 	return ctx
 }
