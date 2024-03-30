@@ -45,13 +45,7 @@ func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex 
 	}
 	consumerGroups = append(consumerGroups, consumerGroup)
 
-	isReady := false
 	setupFunc := func() error {
-		if !isReady {
-			isReady = true
-			// signals to the main routine that this worker joins the consumer group already
-			close(workerReadyChannel)
-		}
 		return nil
 	}
 	consumeFunc := func(record *models.Record) (consumeFuncErr error) {
@@ -66,7 +60,7 @@ func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex 
 		consumeFuncErr = processFunc(ctx, record)
 		return
 	}
-	consumerGroupHandler := NewConsumerGroupHandler(logs, setupFunc, consumeFunc, workerNotifyChannel)
+	consumerGroupHandler := NewConsumerGroupHandler(logs, setupFunc, consumeFunc, workerNotifyChannel, workerReadyChannel)
 
 	count := 0
 	for {
