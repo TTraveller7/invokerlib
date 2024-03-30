@@ -31,6 +31,7 @@ func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex 
 		wg.Done()
 		logs.Printf("ends")
 	}()
+	wg.Add(1)
 
 	logs.Printf("starts")
 

@@ -175,7 +175,6 @@ func Run() error {
 				}
 			}
 
-			wg.Add(1)
 			metricsClient.EmitCounter("worker_num", "Number of workers", 1)
 		}
 	}
@@ -201,7 +200,7 @@ func Exit() {
 	for _, nc := range workerNotifyChannels {
 		nc <- "exit"
 	}
-	wg.Done()
+	wg.Wait()
 	for _, errChan := range workerErrorChannels {
 		for err := range errChan {
 			logs.Printf("worker exited with error: %v", err)
