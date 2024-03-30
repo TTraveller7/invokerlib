@@ -91,6 +91,7 @@ func NewConsumerGroupHandler(logs *log.Logger, setupFunc func() error, consumeFu
 		setup:               setupFunc,
 		consume:             consumeFunc,
 		workerNotifyChannel: workerNotifyChannel,
+		workerReadyChannel:  workerReadyChannel,
 	}
 }
 
