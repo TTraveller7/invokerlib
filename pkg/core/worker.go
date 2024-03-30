@@ -29,6 +29,7 @@ func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex 
 		}
 		close(errCh)
 		wg.Done()
+		metricsClient.EmitCounter("worker_num", "Number of workers", -1)
 		logs.Printf("ends")
 	}()
 	wg.Add(1)
