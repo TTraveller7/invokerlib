@@ -83,17 +83,16 @@ func (c *Cron) run(ctx context.Context, joinCallback models.JoinCallback, stateS
 			watermark := c.w.Get()
 			if watermark+c.windowSize < ts.Unix() {
 				c.w.Advance()
-				go asyncJoin(ctx, watermark, joinCallback, stateStore, c.logs)
+				go asyncJoin(ctx, watermark, joinCallback, stateStore)
 				c.logs.Printf("watermark advanced: %v to %v", watermark, watermark+c.windowSize)
 			}
 		}
 	}
 }
 
-func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCallback, stateStore state.StateStore,
-	logger *log.Logger) {
-	asyncJoinPrefix := fmt.Sprintf("%s async join at watermark %v: ", logger.Prefix(), watermark)
-	logger.SetPrefix(asyncJoinPrefix)
+func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCallback, stateStore state.StateStore) {
+	asyncJoinPrefix := fmt.Sprintf("[async join at %v] ", watermark)
+	logs := log.New(os.Stdout, asyncJoinPrefix, log.LstdFlags|log.Lshortfile)
 
 	leftBatchIds := make([]string, 0)
 	rightBatchIds := make([]string, 0)
@@ -108,12 +107,12 @@ func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCal
 	defer func() {
 		for _, batchId := range leftBatchIds {
 			if err := stateStore.Delete(ctx, batchId); err != nil {
-				logger.Printf("async join delete keySet record failed: %v", err)
+				logs.Printf("async join delete keySet record failed: %v", err)
 			}
 		}
 		for _, batchId := range rightBatchIds {
 			if err := stateStore.Delete(ctx, batchId); err != nil {
-				logger.Printf("async join delete keySet record failed: %v", err)
+				logs.Printf("async join delete keySet record failed: %v", err)
 			}
 		}
 	}()
@@ -121,17 +120,17 @@ func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCal
 	// fetch key sets
 	leftKeySets, err := fetchKeySets(ctx, stateStore, leftBatchIds)
 	if err != nil {
-		logger.Printf("async join fetch key sets failed: %v", err)
+		logs.Printf("async join fetch key sets failed: %v", err)
 	}
 	rightKeySets, err := fetchKeySets(ctx, stateStore, rightBatchIds)
 	if err != nil {
-		logger.Printf("async join fetch key sets failed: %v", err)
+		logs.Printf("async join fetch key sets failed: %v", err)
 	}
 
 	// fetch records
 	leftRecords, err := fetchRecords(ctx, stateStore, leftKeySets)
 	if err != nil {
-		logger.Printf("async join fetch records failed: %v", err)
+		logs.Printf("async join fetch records failed: %v", err)
 	}
 
 	// join
@@ -141,14 +140,14 @@ func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCal
 			logs.Printf("cache miss, key=%s", rightKey)
 			continue
 		} else if err != nil {
-			logger.Printf("async join fetch record failed: %v", err)
+			logs.Printf("async join fetch record failed: %v", err)
 			continue
 		}
 
 		rightRecord := models.NewRecord(rightKey, val)
 		for _, leftRecord := range leftRecords {
 			if err := joinCallback(ctx, leftRecord, rightRecord); err != nil {
-				logger.Printf("async join: join callback failed: %v", err)
+				logs.Printf("async join: join callback failed: %v", err)
 				return
 			}
 		}

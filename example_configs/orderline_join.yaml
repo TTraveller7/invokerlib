@@ -29,7 +29,7 @@ processorConfigs:
     entryPoint: "OrderlineJoinHandler"
     name: "orderlinejoin"
     type: "join"
-    windowSize: 30
+    windowSize: 10
     numOfWorker: 1
     inputKafkaConfigs: 
     - address: "kafka:9092"
@@ -37,7 +37,7 @@ processorConfigs:
     - address: "kafka:9092"
       topic: "orderlineparse"
     outputConfig: 
-      defaultTopicPartitions: 0
+      defaultTopicPartitions: 1
 
 globalKafkaConfig: 
   address: "kafka:9092"
