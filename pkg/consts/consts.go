@@ -31,3 +31,7 @@ const (
 	ProcessorTypeProcess = "process"
 	ProcessorTypeJoin    = "join"
 )
+
+const JoinKeyBufferMinCapacity = 8
+
+const JoinMinWindowSize = 30

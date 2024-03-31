@@ -69,6 +69,8 @@ type ProcessorConfig struct {
 
 	// OutputConfig defines the output of a processor's input. OutputConfig must be specified in a config.
 	OutputConfig *OutputConfig `yaml:"outputConfig"`
+
+	WindowSize int `yaml:"windowSize"`
 }
 
 type OutputConfig struct {
@@ -141,6 +143,11 @@ func (rc *RootConfig) Validate() error {
 		case consts.ProcessorTypeJoin:
 			if inputCount <= 1 {
 				return fmt.Errorf("processor with type=join must have more than one input sources")
+			}
+
+			// check window size
+			if pc.WindowSize < consts.JoinMinWindowSize {
+				return fmt.Errorf("window size is smaller than minimum")
 			}
 		default:
 			return consts.ErrProcessorTypeNotRecognized
@@ -245,6 +252,7 @@ type ConsumerConfig struct {
 	Address      string `json:"address"`
 	Topic        string `json:"topic"`
 	NumOfWorkers int    `json:"num_of_workers"`
+	TopicIndex   int    `json:"topic_index"`
 }
 
 type InternalProcessorConfig struct {
@@ -255,6 +263,7 @@ type InternalProcessorConfig struct {
 	DefaultOutputKafkaConfig *KafkaConfig            `json:"default_output_kafka_config"`
 	OutputKafkaConfigs       map[string]*KafkaConfig `json:"output_kafka_configs"`
 	GlobalStoreConfig        *GlobalStoreConfig      `json:"global_store_config"`
+	WindowSize               int                     `json:"window_size"`
 }
 
 func NewInternalProcessorConfig(rootConfig *RootConfig, processorName string) *InternalProcessorConfig {
@@ -271,14 +280,18 @@ func NewInternalProcessorConfig(rootConfig *RootConfig, processorName string) *I
 		}
 
 		ipc.Type = processorConfig.Type
+		ipc.WindowSize = processorConfig.WindowSize
 
 		consumerConfigs := make([]*ConsumerConfig, 0)
+		topicIndex := 0
 		for _, inputProcessor := range processorConfig.InputProcessors {
 			cc := &ConsumerConfig{
 				Address:      kafkaAddr,
 				Topic:        inputProcessor,
 				NumOfWorkers: processorConfig.NumOfWorker,
+				TopicIndex:   topicIndex,
 			}
+			topicIndex++
 			consumerConfigs = append(consumerConfigs, cc)
 		}
 		for _, inputKakfaConfig := range processorConfig.InputKafkaConfigs {
@@ -286,7 +299,9 @@ func NewInternalProcessorConfig(rootConfig *RootConfig, processorName string) *I
 				Address:      inputKakfaConfig.Address,
 				Topic:        inputKakfaConfig.Topic,
 				NumOfWorkers: processorConfig.NumOfWorker,
+				TopicIndex:   topicIndex,
 			}
+			topicIndex++
 			consumerConfigs = append(consumerConfigs, cc)
 		}
 		ipc.ConsumerConfigs = consumerConfigs

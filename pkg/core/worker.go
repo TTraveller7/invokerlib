@@ -10,13 +10,28 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/TTraveller7/invokerlib/pkg/conf"
 	"github.com/TTraveller7/invokerlib/pkg/models"
+	"github.com/TTraveller7/invokerlib/pkg/utils"
 )
+
+type WorkerMeta struct {
+	WorkerId   string
+	TopicIndex int
+	Alive      bool
+}
 
 func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex int, processFunc models.ProcessCallback,
 	errCh chan<- error, wg *sync.WaitGroup, workerNotifyChannel <-chan string, workerReadyChannel chan<- struct{}) {
 	// set up worker logger
 	logPrefix := fmt.Sprintf("[worker-%s-%v] ", consumerConfig.Topic, workerIndex)
 	logs := log.New(os.Stdout, logPrefix, log.LstdFlags|log.Lshortfile)
+
+	// add worker meta
+	workerId, _ := utils.WorkerId(ctx)
+	workerMetas[workerId] = &WorkerMeta{
+		WorkerId:   workerId,
+		TopicIndex: consumerConfig.TopicIndex,
+		Alive:      true,
+	}
 
 	var workerErr error
 	defer func() {
@@ -29,6 +44,7 @@ func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex 
 		}
 		close(errCh)
 		wg.Done()
+		workerMetas[workerId].Alive = false
 		metricsClient.EmitCounter("worker_num", "Number of workers", -1)
 		logs.Printf("ends")
 	}()

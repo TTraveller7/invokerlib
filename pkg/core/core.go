@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
+	"time"
 
 	"github.com/TTraveller7/invokerlib/pkg/conf"
 	"github.com/TTraveller7/invokerlib/pkg/consts"
 	"github.com/TTraveller7/invokerlib/pkg/logs"
 	"github.com/TTraveller7/invokerlib/pkg/models"
+	"github.com/TTraveller7/invokerlib/pkg/state"
 	"github.com/TTraveller7/invokerlib/pkg/utils"
 )
 
@@ -29,6 +31,10 @@ var (
 	processorCtx context.Context
 
 	metricsClient *utils.MetricsClient
+
+	workerMetas map[string]*WorkerMeta
+
+	cronDone chan<- bool
 )
 
 func Initialize(internalPc *conf.InternalProcessorConfig, pc *models.ProcessorCallbacks) error {
@@ -59,6 +65,7 @@ func Initialize(internalPc *conf.InternalProcessorConfig, pc *models.ProcessorCa
 	metricsClient = utils.NewMetricsClient(c.Name)
 
 	processorCtx = context.Background()
+	workerMetas = make(map[string]*WorkerMeta, 0)
 	workerNotifyChannels = make([]chan<- string, 0)
 	workerErrorChannels = make([]<-chan error, 0)
 	wg = &sync.WaitGroup{}
@@ -149,22 +156,58 @@ func Run() error {
 	}
 	workerReadyChannels = make([]<-chan struct{}, workerTotalCount)
 
-	for _, consumerConfig := range c.ConsumerConfigs {
-		for i := 0; i < consumerConfig.NumOfWorkers; i++ {
-			workerCtx := utils.NewWorkerContext(processorCtx, i, c.Name, consumerConfig.Topic)
+	if c.Type == consts.ProcessorTypeProcess {
+		for _, consumerConfig := range c.ConsumerConfigs {
+			for i := 0; i < consumerConfig.NumOfWorkers; i++ {
+				workerCtx := utils.NewWorkerContext(processorCtx, i, c.Name, consumerConfig.Topic)
 
-			workerNotifyChannel := make(chan string, 10)
-			workerNotifyChannels = append(workerNotifyChannels, workerNotifyChannel)
+				workerNotifyChannel := make(chan string, 10)
+				workerNotifyChannels = append(workerNotifyChannels, workerNotifyChannel)
 
-			workerErrorChannel := make(chan error, 1)
-			workerErrorChannels = append(workerErrorChannels, workerErrorChannel)
+				workerErrorChannel := make(chan error, 1)
+				workerErrorChannels = append(workerErrorChannels, workerErrorChannel)
 
-			workerReadyChannel := make(chan struct{})
-			workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
+				workerReadyChannel := make(chan struct{}, 1)
+				workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
 
-			go Work(workerCtx, consumerConfig, i, processorCallbacks.Process, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
+				go Work(workerCtx, consumerConfig, i, processorCallbacks.Process, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
 
-			metricsClient.EmitCounter("worker_num", "Number of workers", 1)
+				metricsClient.EmitCounter("worker_num", "Number of workers", 1)
+			}
+		}
+	} else {
+		windowSize := int64(c.WindowSize)
+		w := NewWatermark(windowSize)
+
+		cd := make(chan bool)
+		cronDone = cd
+		cronCtx := context.WithValue(processorCtx, "hello", "cron")
+		cron := NewCron(5*time.Second, windowSize, w, cd)
+		stateStore, err := state.NewRedisStateStore("state-store")
+		if err != nil {
+			logs.Printf("create redis state store failed: %v", err)
+			return err
+		}
+		cron.run(cronCtx, processorCallbacks.Join, stateStore)
+
+		for _, consumerConfig := range c.ConsumerConfigs {
+			for i := 0; i < consumerConfig.NumOfWorkers; i++ {
+				workerCtx := utils.NewWorkerContext(processorCtx, i, c.Name, consumerConfig.Topic)
+
+				workerNotifyChannel := make(chan string, 10)
+				workerNotifyChannels = append(workerNotifyChannels, workerNotifyChannel)
+
+				workerErrorChannel := make(chan error, 1)
+				workerErrorChannels = append(workerErrorChannels, workerErrorChannel)
+
+				workerReadyChannel := make(chan struct{}, 1)
+				workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
+
+				joinWorker := NewJoinWorker(w, stateStore, int(3*windowSize))
+				go Work(workerCtx, consumerConfig, i, joinWorker.JoinWorkerProcessCallback, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
+
+				metricsClient.EmitCounter("worker_num", "Number of workers", 1)
+			}
 		}
 	}
 
