@@ -2,20 +2,30 @@ INSTALL_PATH=/opt/svt/bin/fctl
 
 all: cleanall applyk8s installprom build install
 
-cleanall: clean cleanfission cleank8s cleanprom
+cleanall: clean cleanfissionmonitor cleanfissionjoin cleanfissionenv cleank8s cleanprom
 
 clean:
 	mkdir -p target 
 	rm -rf target/*
 	rm -f $(INSTALL_PATH)
 
-cleanfission:
+cleanfissionmonitor:
 	fission fn delete --name "monitor" --ignorenotfound
 	-fission httptrigger delete --name "monitor" --ignorenotfound
+
+cleanfissonwordcount:
 	-fission httptrigger delete --name "counter" --ignorenotfound
 	-fission httptrigger delete --name "splitter" --ignorenotfound
 	fission fn delete --name "splitter" --ignorenotfound
 	fission fn delete --name "counter" --ignorenotfound
+
+cleanfissionjoin:
+	-fission httptrigger delete --name "orderlineparse" --ignorenotfound
+	-fission httptrigger delete --name "orderlinejoin" --ignorenotfound
+	fission fn delete --name "orderlineparse" --ignorenotfound
+	fission fn delete --name "orderlinejoin" --ignorenotfound
+
+cleanfissionenv:
 	fission env delete --name "invoker" --ignorenotfound
 
 cleank8s: 
@@ -34,8 +44,11 @@ install:
 	cp target/fctl $(INSTALL_PATH)
 	scripts/fission_port_forward.sh
 
-load: 
+loadwordcount: 
 	fctl load -u "https://www.gutenberg.org/cache/epub/4280/pg4280.txt" -n "the_critique_of_pure_reason.txt" -t word_count_source
+
+loadjoin: 
+	fctl load -u "https://media.githubusercontent.com/media/TTraveller7/invokerlib-examples/main/resources/small-order-line.csv" -n "order-line.csv" -t order_source
 
 # prometheus
 

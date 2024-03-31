@@ -3,23 +3,27 @@ processorConfigs:
     files: 
     - go.mod
     - go.sum
-    - orderline_join.go
-    entryPoint: "OrderlineJoinHandler"
-    name: "orderlinejoin"
-    type: "join"
+    - orderline_parse.go
+    - models.go
+    - utils.go
+    entryPoint: "OrderlineParseHandler"
+    name: "orderlineparse"
+    type: "process"
     numOfWorker: 1
     inputKafkaConfigs: 
-    - address: "kafka:9092"
-      topic: "order_source"
     - address: "kafka:9092"
       topic: "orderline_source"
     outputConfig: 
       defaultTopicPartitions: 1
+      outputKafkaConfigs:
+      - name: "orderparse"
+        address: "kakfa:9092"
+        topic: "orderparse"
 
 globalKafkaConfig: 
   address: "kafka:9092"
   initialTopics:
-  - topic: "order_source"
+  - topic: "orderparse"
     partitions: 3
   - topic: "orderline_source"
     partitions: 3

@@ -43,6 +43,7 @@ func initProducers() error {
 			saramaProducer: saramaProducer,
 			topic:          c.DefaultOutputKafkaConfig.Topic,
 		}
+		addrToSaramaProducer[c.DefaultOutputKafkaConfig.Address] = saramaProducer
 	}
 
 	// create other producers
