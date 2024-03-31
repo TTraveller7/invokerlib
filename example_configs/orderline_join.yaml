@@ -1,0 +1,34 @@
+processorConfigs: 
+  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/orderline_join
+    files: 
+    - go.mod
+    - go.sum
+    - orderline_join.go
+    entryPoint: "OrderlineJoinHandler"
+    name: "orderlinejoin"
+    type: "join"
+    numOfWorker: 1
+    inputKafkaConfigs: 
+    - address: "kafka:9092"
+      topic: "order_source"
+    - address: "kafka:9092"
+      topic: "orderline_source"
+    outputConfig: 
+      defaultTopicPartitions: 1
+
+globalKafkaConfig: 
+  address: "kafka:9092"
+  initialTopics:
+  - topic: "order_source"
+    partitions: 3
+  - topic: "orderline_source"
+    partitions: 3
+
+globalStoreConfig:
+  redisConfigs:
+  - name: "state-redis"
+    address: "state-redis:6379"
+  memcachedConfigs:
+  - name: "state-memcached"
+    addresses: 
+    - "state-memcached:11211"
