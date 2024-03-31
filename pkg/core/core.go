@@ -188,7 +188,7 @@ func Run() error {
 			logs.Printf("create redis state store failed: %v", err)
 			return err
 		}
-		cron.run(cronCtx, processorCallbacks.Join, stateStore)
+		go cron.run(cronCtx, processorCallbacks.Join, stateStore)
 
 		for _, consumerConfig := range c.ConsumerConfigs {
 			for i := 0; i < consumerConfig.NumOfWorkers; i++ {
@@ -246,6 +246,11 @@ func Exit() {
 		return
 	}
 	defer resetFunc()
+
+	// stop cron
+	if cronDone != nil {
+		close(cronDone)
+	}
 
 	// stop workers
 	for _, nc := range workerNotifyChannels {
