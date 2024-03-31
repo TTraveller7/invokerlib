@@ -17,8 +17,27 @@ processorConfigs:
       defaultTopicPartitions: 1
       outputKafkaConfigs:
       - name: "orderparse"
-        address: "kakfa:9092"
+        address: "kafka:9092"
         topic: "orderparse"
+  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/orderline_join
+    files: 
+    - go.mod
+    - go.sum
+    - orderline_join.go
+    - models.go
+    - utils.go
+    entryPoint: "OrderlineJoinHandler"
+    name: "orderlinejoin"
+    type: "join"
+    windowSize: 30
+    numOfWorker: 1
+    inputKafkaConfigs: 
+    - address: "kafka:9092"
+      topic: "orderparse"
+    - address: "kafka:9092"
+      topic: "orderlineparse"
+    outputConfig: 
+      defaultTopicPartitions: 0
 
 globalKafkaConfig: 
   address: "kafka:9092"
