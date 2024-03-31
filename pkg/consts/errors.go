@@ -9,6 +9,7 @@ var (
 	ErrReadPtrSameAsWritePtr      = fmt.Errorf("read ptr is same as write ptr")
 	ErrLockBufferFailure          = fmt.Errorf("fail to lock buffer")
 	ErrLockSlotFailure            = fmt.Errorf("fail to lock slot")
+	ErrStateStoreKeyNotExist      = fmt.Errorf("state store key does not exists")
 )
 
 func ErrKakfaAddressEmpty(prefix string) error {

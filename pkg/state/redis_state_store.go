@@ -41,10 +41,13 @@ func NewRedisStateStore(name string) (StateStore, error) {
 
 func (r *RedisStateStore) Get(ctx context.Context, key string) ([]byte, error) {
 	strVal, err := r.cli.Get(ctx, key).Result()
-	if err != nil {
+	if err == redis.Nil {
+		return nil, consts.ErrStateStoreKeyNotExist
+	} else if err != nil {
 		return nil, fmt.Errorf("redis state store Get failed: %v", err)
+	} else {
+		return []byte(strVal), nil
 	}
-	return []byte(strVal), nil
 }
 
 func (r *RedisStateStore) Put(ctx context.Context, key string, val []byte) error {

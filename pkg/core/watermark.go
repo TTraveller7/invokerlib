@@ -3,9 +3,13 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
+	"os"
 	"sync/atomic"
 	"time"
 
+	"github.com/TTraveller7/invokerlib/pkg/consts"
 	"github.com/TTraveller7/invokerlib/pkg/logs"
 	"github.com/TTraveller7/invokerlib/pkg/models"
 	"github.com/TTraveller7/invokerlib/pkg/state"
@@ -40,6 +44,7 @@ type Cron struct {
 	windowSize   int64
 	tickInterval time.Duration
 	available    bool
+	logs         *log.Logger
 }
 
 func NewCron(tickInterval time.Duration, windowSize int64, w *Watermark, done <-chan bool) *Cron {
@@ -51,6 +56,7 @@ func NewCron(tickInterval time.Duration, windowSize int64, w *Watermark, done <-
 		windowSize:   windowSize,
 		tickInterval: tickInterval,
 		available:    true,
+		logs:         log.New(os.Stdout, "cron", log.LstdFlags|log.Lshortfile),
 	}
 }
 
@@ -68,23 +74,27 @@ func (c *Cron) run(ctx context.Context, joinCallback models.JoinCallback, stateS
 	for {
 		select {
 		case <-c.done:
-			logs.Printf("cron exits by done")
+			c.logs.Printf("cron exits by done")
 			return
 		case <-ctx.Done():
-			logs.Printf("cron exits by context done")
+			c.logs.Printf("cron exits by context done")
 			return
 		case ts := <-c.t.C:
 			watermark := c.w.Get()
 			if watermark+c.windowSize < ts.Unix() {
 				c.w.Advance()
-				go asyncJoin(ctx, watermark, joinCallback, stateStore)
-				logs.Printf("watermark advanced: %v to %v", watermark, watermark+c.windowSize)
+				go asyncJoin(ctx, watermark, joinCallback, stateStore, c.logs)
+				c.logs.Printf("watermark advanced: %v to %v", watermark, watermark+c.windowSize)
 			}
 		}
 	}
 }
 
-func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCallback, stateStore state.StateStore) {
+func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCallback, stateStore state.StateStore,
+	logger *log.Logger) {
+	asyncJoinPrefix := fmt.Sprintf("%s async join at watermark %v: ", logger.Prefix(), watermark)
+	logger.SetPrefix(asyncJoinPrefix)
+
 	leftBatchIds := make([]string, 0)
 	rightBatchIds := make([]string, 0)
 	for _, workerMeta := range workerMetas {
@@ -97,52 +107,84 @@ func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCal
 	}
 	defer func() {
 		for _, batchId := range leftBatchIds {
-			stateStore.Delete(ctx, batchId)
+			if err := stateStore.Delete(ctx, batchId); err != nil {
+				logger.Printf("async join delete keySet record failed: %v", err)
+			}
 		}
 		for _, batchId := range rightBatchIds {
-			stateStore.Delete(ctx, batchId)
+			if err := stateStore.Delete(ctx, batchId); err != nil {
+				logger.Printf("async join delete keySet record failed: %v", err)
+			}
 		}
 	}()
 
 	// fetch key sets
-	leftKeySets := fetchKeySets(ctx, stateStore, leftBatchIds)
-	rightKeySets := fetchKeySets(ctx, stateStore, rightBatchIds)
+	leftKeySets, err := fetchKeySets(ctx, stateStore, leftBatchIds)
+	if err != nil {
+		logger.Printf("async join fetch key sets failed: %v", err)
+	}
+	rightKeySets, err := fetchKeySets(ctx, stateStore, rightBatchIds)
+	if err != nil {
+		logger.Printf("async join fetch key sets failed: %v", err)
+	}
 
 	// fetch records
-	leftRecords := fetchRecords(ctx, stateStore, leftKeySets)
-	rightRecords := fetchRecords(ctx, stateStore, rightKeySets)
+	leftRecords, err := fetchRecords(ctx, stateStore, leftKeySets)
+	if err != nil {
+		logger.Printf("async join fetch records failed: %v", err)
+	}
 
 	// join
-	for _, leftRecord := range leftRecords {
-		for _, rightRecord := range rightRecords {
+	for _, rightKey := range rightKeySets {
+		val, err := stateStore.Get(ctx, rightKey)
+		if err == consts.ErrStateStoreKeyNotExist {
+			logs.Printf("cache miss, key=%s", rightKey)
+			continue
+		} else if err != nil {
+			logger.Printf("async join fetch record failed: %v", err)
+			continue
+		}
+
+		rightRecord := models.NewRecord(rightKey, val)
+		for _, leftRecord := range leftRecords {
 			if err := joinCallback(ctx, leftRecord, rightRecord); err != nil {
-				logs.Printf("async join: join callback failed: %v", err)
+				logger.Printf("async join: join callback failed: %v", err)
 				return
 			}
 		}
 	}
 }
 
-func fetchKeySets(ctx context.Context, stateStore state.StateStore, batchIds []string) []string {
+func fetchKeySets(ctx context.Context, stateStore state.StateStore, batchIds []string) ([]string, error) {
 	res := make([]string, 0)
 	for _, batchId := range batchIds {
 		keySet, err := stateStore.Get(ctx, batchId)
-		if err == nil {
-			keySetArr := make([]string, 0)
-			json.Unmarshal(keySet, &keySetArr)
-			res = append(res, keySetArr...)
+		if err == consts.ErrStateStoreKeyNotExist {
+			logs.Printf("cache miss, batchId=%s", batchId)
+			continue
+		} else if err != nil {
+			return nil, err
 		}
+
+		keySetArr := make([]string, 0)
+		json.Unmarshal(keySet, &keySetArr)
+		res = append(res, keySetArr...)
 	}
-	return res
+	return res, nil
 }
 
-func fetchRecords(ctx context.Context, stateStore state.StateStore, keySet []string) []*models.Record {
+func fetchRecords(ctx context.Context, stateStore state.StateStore, keySet []string) ([]*models.Record, error) {
 	res := make([]*models.Record, 0, len(keySet))
 	for _, key := range keySet {
 		val, err := stateStore.Get(ctx, key)
-		if err == nil {
-			res = append(res, models.NewRecord(key, val))
+		if err == consts.ErrStateStoreKeyNotExist {
+			logs.Printf("cache miss, key=%s", key)
+			continue
+		} else if err != nil {
+			return nil, err
 		}
+
+		res = append(res, models.NewRecord(key, val))
 	}
-	return res
+	return res, nil
 }

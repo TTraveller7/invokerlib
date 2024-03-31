@@ -21,7 +21,14 @@ func NewFreeCacheStateStore() (StateStore, error) {
 }
 
 func (f *FreeCacheStateStore) Get(ctx context.Context, key string) ([]byte, error) {
-	return f.cli.Get([]byte(key))
+	res, err := f.cli.Get([]byte(key))
+	if err == freecache.ErrNotFound {
+		return nil, consts.ErrStateStoreKeyNotExist
+	} else if err != nil {
+		return nil, err
+	} else {
+		return res, nil
+	}
 }
 
 func (f *FreeCacheStateStore) Put(ctx context.Context, key string, val []byte) error {
