@@ -456,38 +456,46 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 	}
 
 	producerConfig := sarama.NewConfig()
-	producerConfig.Producer.RequiredAcks = sarama.NoResponse
-	// TODO: change this to true
-	producerConfig.Producer.Return.Errors = false
-	producer, err := sarama.NewAsyncProducer([]string{rootConfig.GlobalKafkaConfig.Address}, producerConfig)
+	producer, err := sarama.NewSyncProducer([]string{rootConfig.GlobalKafkaConfig.Address}, producerConfig)
 	if err != nil {
 		err = fmt.Errorf("create producer failed: %v", err)
 		logs.Printf("%v", err)
 		return nil, err
 	}
-	defer func() {
-		logs.Printf("shutting down producer")
-		producer.Close()
-		logs.Printf("produce shut down")
-	}()
+	defer producer.Close()
 
 	count := 0
 	startTime := time.Now()
+	batchSize := 10
 	for _, topic := range loadParams.Topics {
 		s := bufio.NewScanner(file)
-		var offset int64
+		messages := make([]*sarama.ProducerMessage, 0, batchSize)
 		for s.Scan() {
 			msg := &sarama.ProducerMessage{
 				Topic: topic,
 				Value: sarama.ByteEncoder(s.Bytes()),
 			}
-			producer.Input() <- msg
-			count++
-			if count%10000 == 0 {
-				logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
+			messages = append(messages, msg)
+			if len(messages) == batchSize {
+				if err := producer.SendMessages(messages); err != nil {
+					logs.Printf("send messages failed: %v", err)
+					return nil, err
+				}
+				messages = make([]*sarama.ProducerMessage, 0, batchSize)
+				count += batchSize
+				if count%10000 == 0 {
+					logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
+				}
 			}
 		}
-		logs.Printf("produce finished: fileName=%s, topic=%s, final offset=%v", loadParams.Name, topic, offset)
+		if len(messages) > 0 {
+			if err := producer.SendMessages(messages); err != nil {
+				logs.Printf("send messages failed: %v", err)
+				return nil, err
+			}
+		}
+		count += len(messages)
+		logs.Printf("produce finished: fileName=%s, topic=%s, final count=%v", loadParams.Name, topic, batchSize)
 	}
 
 	return successResponse(), nil
