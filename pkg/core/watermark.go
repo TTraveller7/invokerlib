@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/TTraveller7/invokerlib/pkg/models"
 	"github.com/TTraveller7/invokerlib/pkg/state"
 	"github.com/TTraveller7/invokerlib/pkg/utils"
+	"github.com/bytedance/sonic"
 )
 
 type Watermark struct {
@@ -166,7 +166,7 @@ func fetchKeySets(ctx context.Context, stateStore state.StateStore, batchIds []s
 		}
 
 		keySetArr := make([]string, 0)
-		json.Unmarshal(keySet, &keySetArr)
+		sonic.Unmarshal(keySet, &keySetArr)
 		res = append(res, keySetArr...)
 	}
 	return res, nil

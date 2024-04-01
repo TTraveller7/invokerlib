@@ -2,12 +2,12 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/TTraveller7/invokerlib/pkg/models"
 	"github.com/TTraveller7/invokerlib/pkg/state"
 	"github.com/TTraveller7/invokerlib/pkg/utils"
+	"github.com/bytedance/sonic"
 )
 
 type JoinWorker struct {
@@ -35,13 +35,13 @@ func (j *JoinWorker) JoinWorkerProcessCallback(ctx context.Context, record *mode
 	keySet, err := j.s.Get(ctx, batchId)
 	keys := make([]string, 0)
 	if err == nil {
-		json.Unmarshal(keySet, &keys)
+		sonic.Unmarshal(keySet, &keys)
 	}
 	keys = append(keys, record.Key())
 	if err := j.s.PutWithExpireTime(ctx, record.Key(), record.Value(), j.expireTime); err != nil {
 		return err
 	}
-	keySet, _ = json.Marshal(keys)
+	keySet, _ = sonic.Marshal(keys)
 	if err := j.s.Put(ctx, batchId, keySet); err != nil {
 		return err
 	}
