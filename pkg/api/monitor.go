@@ -498,9 +498,13 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 		// count += len(messages)
 
 		for s.Scan() {
+			str := s.Text()
+			if len(strings.Split(str, ",")) != 10 {
+				return nil, fmt.Errorf("load file error: line elements less than 10: %s", str)
+			}
 			msg := &sarama.ProducerMessage{
 				Topic: topic,
-				Value: sarama.ByteEncoder(s.Bytes()),
+				Value: sarama.StringEncoder(str),
 			}
 			if _, _, err := producer.SendMessage(msg); err != nil {
 				logs.Printf("send messages failed: %v", err)
