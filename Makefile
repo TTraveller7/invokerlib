@@ -1,8 +1,8 @@
 INSTALL_PATH=/opt/svt/bin/fctl
 
-all: cleanall applyk8s installprom build install
+all: cleanall applyk8s installprom installgrafana build install
 
-cleanall: clean cleanfissionmonitor cleanfissionjoin cleanfissionenv cleank8s cleanprom
+cleanall: clean cleanfissionmonitor cleanfissionjoin cleanfissionenv cleank8s cleanprom cleangrafana
 
 clean:
 	mkdir -p target 
@@ -62,3 +62,11 @@ installprom:
 	kubectl wait --for=condition=Ready pods -l  app.kubernetes.io/name=prometheus-operator -n default
 	kubectl apply -f k8s_yaml/prometheus/role.yaml
 	kubectl apply -f k8s_yaml/prometheus/operator.yaml
+
+# grafana
+
+cleangrafana:
+	kubectl delete -f k8s_yaml/grafana/grafana.yaml --ignore-not-found
+
+installgrafana:
+	kubectl apply -f k8s_yaml/grafana/grafana.yaml
