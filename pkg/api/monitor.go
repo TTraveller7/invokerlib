@@ -467,7 +467,7 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 
 	count := 0
 	startTime := time.Now()
-	batchSize := 10
+	batchSize := 5
 	for _, topic := range loadParams.Topics {
 		s := bufio.NewScanner(file)
 		messages := make([]*sarama.ProducerMessage, 0, batchSize)
@@ -496,7 +496,7 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 			}
 		}
 		count += len(messages)
-		logs.Printf("produce finished: fileName=%s, topic=%s, final count=%v", loadParams.Name, topic, batchSize)
+		logs.Printf("produce finished: fileName=%s, topic=%s, final count=%v", loadParams.Name, topic, count)
 	}
 
 	return successResponse(), nil
