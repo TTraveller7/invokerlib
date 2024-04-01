@@ -10,6 +10,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/TTraveller7/invokerlib/pkg/conf"
@@ -455,29 +456,35 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 	}
 
 	producerConfig := sarama.NewConfig()
-	producerConfig.Producer.Return.Successes = true
-	producer, err := sarama.NewSyncProducer([]string{rootConfig.GlobalKafkaConfig.Address}, producerConfig)
+	producerConfig.Producer.RequiredAcks = sarama.NoResponse
+	// TODO: change this to true
+	producerConfig.Producer.Return.Errors = false
+	producer, err := sarama.NewAsyncProducer([]string{rootConfig.GlobalKafkaConfig.Address}, producerConfig)
 	if err != nil {
 		err = fmt.Errorf("create producer failed: %v", err)
 		logs.Printf("%v", err)
 		return nil, err
 	}
-	defer producer.Close()
+	defer func() {
+		logs.Printf("shutting down producer")
+		producer.Close()
+		logs.Printf("produce shut down")
+	}()
 
+	count := 0
+	startTime := time.Now()
 	for _, topic := range loadParams.Topics {
 		s := bufio.NewScanner(file)
 		var offset int64
-		var producerErr error
 		for s.Scan() {
 			msg := &sarama.ProducerMessage{
 				Topic: topic,
 				Value: sarama.ByteEncoder(s.Bytes()),
 			}
-			_, offset, producerErr = producer.SendMessage(msg)
-			if producerErr != nil {
-				producerErr = fmt.Errorf("send message failed: %v", producerErr)
-				logs.Printf("%v", producerErr)
-				return nil, producerErr
+			producer.Input() <- msg
+			count++
+			if count%10000 == 0 {
+				logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
 			}
 		}
 		logs.Printf("produce finished: fileName=%s, topic=%s, final offset=%v", loadParams.Name, topic, offset)

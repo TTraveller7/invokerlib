@@ -34,4 +34,4 @@ const (
 
 const JoinKeyBufferMinCapacity = 8
 
-const JoinMinWindowSize = 30
+const JoinMinWindowSize = 10

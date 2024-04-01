@@ -182,7 +182,7 @@ func Run() error {
 		cd := make(chan bool)
 		cronDone = cd
 		cronCtx := context.WithValue(processorCtx, "hello", "cron")
-		cron := NewCron(2*time.Second, windowSize, w, cd)
+		cron := NewCron(1*time.Second, windowSize, w, cd)
 		stateStore, err := state.NewRedisStateStore("state-redis")
 		if err != nil {
 			logs.Printf("create redis state store failed: %v", err)

@@ -48,7 +48,7 @@ loadwordcount:
 	fctl load -u "https://www.gutenberg.org/cache/epub/4280/pg4280.txt" -n "the_critique_of_pure_reason.txt" -t word_count_source
 
 loadjoin: 
-	fctl load -u "https://media.githubusercontent.com/media/TTraveller7/invokerlib-examples/main/resources/small-order-line.csv" -n "order-line-small.csv" -t orderline_source
+	fctl load -u "https://media.githubusercontent.com/media/TTraveller7/invokerlib-examples/main/resources/order-line.csv" -n "order-line.csv" -t orderline_source
 
 # prometheus
 
