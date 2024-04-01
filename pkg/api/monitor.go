@@ -467,35 +467,50 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 
 	count := 0
 	startTime := time.Now()
-	batchSize := 5
+	//	batchSize := 1
 	for _, topic := range loadParams.Topics {
 		s := bufio.NewScanner(file)
-		messages := make([]*sarama.ProducerMessage, 0, batchSize)
+		// messages := make([]*sarama.ProducerMessage, 0, batchSize)
+		// for s.Scan() {
+		// 	msg := &sarama.ProducerMessage{
+		// 		Topic: topic,
+		// 		Value: sarama.ByteEncoder(s.Bytes()),
+		// 	}
+		// 	messages = append(messages, msg)
+		// 	if len(messages) == batchSize {
+		// 		if err := producer.SendMessages(messages); err != nil {
+		// 			logs.Printf("send messages failed: %v", err)
+		// 			return nil, err
+		// 		}
+		// 		messages = make([]*sarama.ProducerMessage, 0, batchSize)
+		// 		count += batchSize
+		// 		if count%10000 == 0 {
+		// 			logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
+		// 		}
+		// 	}
+		// }
+		// if len(messages) > 0 {
+		// 	if err := producer.SendMessages(messages); err != nil {
+		// 		logs.Printf("send messages failed: %v", err)
+		// 		return nil, err
+		// 	}
+		// }
+		// count += len(messages)
+
 		for s.Scan() {
 			msg := &sarama.ProducerMessage{
 				Topic: topic,
 				Value: sarama.ByteEncoder(s.Bytes()),
 			}
-			messages = append(messages, msg)
-			if len(messages) == batchSize {
-				if err := producer.SendMessages(messages); err != nil {
-					logs.Printf("send messages failed: %v", err)
-					return nil, err
-				}
-				messages = make([]*sarama.ProducerMessage, 0, batchSize)
-				count += batchSize
-				if count%10000 == 0 {
-					logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
-				}
-			}
-		}
-		if len(messages) > 0 {
-			if err := producer.SendMessages(messages); err != nil {
+			if _, _, err := producer.SendMessage(msg); err != nil {
 				logs.Printf("send messages failed: %v", err)
 				return nil, err
 			}
+			count++
+			if count%10000 == 0 {
+				logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
+			}
 		}
-		count += len(messages)
 		logs.Printf("produce finished: fileName=%s, topic=%s, final count=%v", loadParams.Name, topic, count)
 	}
 
