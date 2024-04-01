@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/TTraveller7/invokerlib/pkg/conf"
-	"github.com/TTraveller7/invokerlib/pkg/logs"
 )
 
 type ProcessorClient struct {

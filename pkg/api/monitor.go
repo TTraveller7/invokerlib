@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"runtime/debug"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/TTraveller7/invokerlib/pkg/conf"
-	"github.com/TTraveller7/invokerlib/pkg/logs"
 	"github.com/TTraveller7/invokerlib/pkg/utils"
 )
 
@@ -50,6 +50,8 @@ var (
 	initialTopics     []*conf.InternalKafkaConfig   = make([]*conf.InternalKafkaConfig, 0)
 	interimTopics     []*conf.InternalKafkaConfig   = make([]*conf.InternalKafkaConfig, 0)
 	processorMetadata map[string]*ProcessorMetadata = make(map[string]*ProcessorMetadata, 0)
+
+	logs *log.Logger = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
 )
 
 func MonitorHandle(w http.ResponseWriter, r *http.Request) {
@@ -467,54 +469,35 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 
 	count := 0
 	startTime := time.Now()
-	//	batchSize := 1
+	batchSize := 10
 	for _, topic := range loadParams.Topics {
 		s := bufio.NewScanner(file)
-		// messages := make([]*sarama.ProducerMessage, 0, batchSize)
-		// for s.Scan() {
-		// 	msg := &sarama.ProducerMessage{
-		// 		Topic: topic,
-		// 		Value: sarama.ByteEncoder(s.Bytes()),
-		// 	}
-		// 	messages = append(messages, msg)
-		// 	if len(messages) == batchSize {
-		// 		if err := producer.SendMessages(messages); err != nil {
-		// 			logs.Printf("send messages failed: %v", err)
-		// 			return nil, err
-		// 		}
-		// 		messages = make([]*sarama.ProducerMessage, 0, batchSize)
-		// 		count += batchSize
-		// 		if count%10000 == 0 {
-		// 			logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
-		// 		}
-		// 	}
-		// }
-		// if len(messages) > 0 {
-		// 	if err := producer.SendMessages(messages); err != nil {
-		// 		logs.Printf("send messages failed: %v", err)
-		// 		return nil, err
-		// 	}
-		// }
-		// count += len(messages)
-
+		messages := make([]*sarama.ProducerMessage, 0, batchSize)
 		for s.Scan() {
-			str := s.Text()
-			if len(strings.Split(str, ",")) != 10 {
-				return nil, fmt.Errorf("load file error: line elements less than 10: %s", str)
-			}
 			msg := &sarama.ProducerMessage{
 				Topic: topic,
-				Value: sarama.StringEncoder(str),
+				Value: sarama.StringEncoder(s.Text()),
 			}
-			if _, _, err := producer.SendMessage(msg); err != nil {
+			messages = append(messages, msg)
+			if len(messages) == batchSize {
+				if err := producer.SendMessages(messages); err != nil {
+					logs.Printf("send messages failed: %v", err)
+					return nil, err
+				}
+				messages = make([]*sarama.ProducerMessage, 0, batchSize)
+				count += batchSize
+				if count%10000 == 0 {
+					logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
+				}
+			}
+		}
+		if len(messages) > 0 {
+			if err := producer.SendMessages(messages); err != nil {
 				logs.Printf("send messages failed: %v", err)
 				return nil, err
 			}
-			count++
-			if count%10000 == 0 {
-				logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
-			}
 		}
+		count += len(messages)
 		logs.Printf("produce finished: fileName=%s, topic=%s, final count=%v", loadParams.Name, topic, count)
 	}
 

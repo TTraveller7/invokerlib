@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/TTraveller7/invokerlib/pkg/consts"
-	"github.com/TTraveller7/invokerlib/pkg/logs"
 	"github.com/allegro/bigcache/v3"
 )
 
@@ -39,7 +38,6 @@ func NewBigCacheStateStore() (StateStore, error) {
 
 		// prints information about additional memory allocation
 		Verbose: true,
-		Logger:  logs.Logger(),
 	}
 
 	b, err := bigcache.New(context.Background(), config)
