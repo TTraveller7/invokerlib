@@ -456,6 +456,7 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 	}
 
 	producerConfig := sarama.NewConfig()
+	producerConfig.Producer.Return.Successes = true
 	producer, err := sarama.NewSyncProducer([]string{rootConfig.GlobalKafkaConfig.Address}, producerConfig)
 	if err != nil {
 		err = fmt.Errorf("create producer failed: %v", err)
