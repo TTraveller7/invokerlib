@@ -20,12 +20,14 @@ import (
 type MetricsClient struct {
 	processerName string
 	counters      sync.Map
+	histograms    sync.Map
 }
 
 func NewMetricsClient(processorName string) *MetricsClient {
 	return &MetricsClient{
 		processerName: processorName,
 		counters:      sync.Map{},
+		histograms:    sync.Map{},
 	}
 }
 
@@ -44,6 +46,24 @@ func (m *MetricsClient) EmitCounter(name string, help string, val float64) error
 	}
 	c, _ := m.counters.Load(name)
 	c.(prometheus.Counter).Add(val)
+	return nil
+}
+
+func (m *MetricsClient) EmitHistogram(name string, help string, val float64) error {
+	if _, exists := m.histograms.Load(name); !exists {
+		c := prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: consts.MetricsNamespace,
+			Subsystem: m.processerName,
+			Name:      name,
+			Help:      help,
+		})
+		if err := prometheus.DefaultRegisterer.Register(c); err != nil {
+			return err
+		}
+		m.histograms.Store(name, c)
+	}
+	c, _ := m.histograms.Load(name)
+	c.(prometheus.Histogram).Observe(val)
 	return nil
 }
 

@@ -192,6 +192,7 @@ func Run() error {
 			logs.Printf("create redis state store failed: %v", err)
 			return err
 		}
+		stateStoreWrapper := state.NewStateStoreWrapper(stateStore, metricsClient)
 		go cron.run(cronCtx, processorCallbacks.Join, stateStore)
 
 		for _, consumerConfig := range c.ConsumerConfigs {
@@ -207,7 +208,7 @@ func Run() error {
 				workerReadyChannel := make(chan struct{}, 1)
 				workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
 
-				joinWorker := NewJoinWorker(w, stateStore, int(5*windowSize))
+				joinWorker := NewJoinWorker(w, stateStoreWrapper, int(5*windowSize))
 				go Work(workerCtx, consumerConfig, i, joinWorker.JoinWorkerProcessCallback, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
 
 				metricsClient.EmitCounter("worker_num", "Number of workers", 1)
