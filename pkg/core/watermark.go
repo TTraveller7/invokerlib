@@ -96,7 +96,7 @@ func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCal
 	leftBatchIds := make([]string, 0)
 	rightBatchIds := make([]string, 0)
 	workerMetaMu.RLock()
-	defer workerMetaMu.Unlock()
+	defer workerMetaMu.RUnlock()
 	for _, workerMeta := range workerMetas {
 		batchId := utils.BatchIdFromWorkerId(workerMeta.WorkerId, watermark)
 		if workerMeta.TopicIndex == 0 {
