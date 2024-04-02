@@ -185,7 +185,7 @@ func Run() error {
 
 		cd := make(chan bool)
 		cronDone = cd
-		cronCtx := context.WithValue(processorCtx, "hello", "cron")
+		cronCtx := context.WithValue(processorCtx, consts.CTX_KEY_INVOKER_LIB_CRON, "cron")
 		cron := NewCron(1*time.Second, windowSize, w, cd)
 		stateStore, err := state.NewRedisStateStore("state-redis")
 		if err != nil {
@@ -209,7 +209,8 @@ func Run() error {
 				workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
 
 				joinWorker := NewJoinWorker(w, stateStoreWrapper, int(5*windowSize))
-				go Work(workerCtx, consumerConfig, i, joinWorker.JoinWorkerProcessCallback, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
+				go Work(workerCtx, consumerConfig, i, joinWorker.JoinWorkerProcessCallback, workerErrorChannel, wg,
+					workerNotifyChannel, workerReadyChannel)
 
 				metricsClient.EmitCounter("worker_num", "Number of workers", 1)
 			}

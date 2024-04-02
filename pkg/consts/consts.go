@@ -7,6 +7,7 @@ const (
 	CTX_KEY_INVOKER_LIB_WORKER_ID      = contextKey("invoker_lib_worker_id")
 	CTX_KEY_INVOKER_LIB_WORKER_INDEX   = contextKey("invoker_lib_worker_index")
 	CTX_KEY_INVOKER_LIB_WORKER_TOPIC   = contextKey("invoker_lib_worker_topic")
+	CTX_KEY_INVOKER_LIB_CRON           = contextKey("invoker_lib_cron")
 )
 
 const (
