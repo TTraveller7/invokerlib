@@ -22,7 +22,6 @@ func NewStateStoreWrapper(s StateStore, metricsClient *utils.MetricsClient) *Sta
 }
 
 func (w *StateStoreWrapper) Get(ctx context.Context, key string) ([]byte, error) {
-	w.metricsClient.EmitCounter("get", "Number of get operations", 1)
 	startTime := time.Now()
 
 	res, err := w.s.Get(ctx, key)
@@ -46,7 +45,6 @@ func (w *StateStoreWrapper) Put(ctx context.Context, key string, val []byte) err
 }
 
 func (w *StateStoreWrapper) PutWithExpireTime(ctx context.Context, key string, val []byte, expireSeconds int) error {
-	w.metricsClient.EmitCounter("put", "Number of put operations", 1)
 	startTime := time.Now()
 
 	err := w.s.PutWithExpireTime(ctx, key, val, expireSeconds)
@@ -62,16 +60,15 @@ func (w *StateStoreWrapper) PutWithExpireTime(ctx context.Context, key string, v
 }
 
 func (w *StateStoreWrapper) Delete(ctx context.Context, key string) error {
-	w.metricsClient.EmitCounter("delete", "Number of delete operations", 1)
 	startTime := time.Now()
 
 	err := w.s.Delete(ctx, key)
 
 	elapsedTime := time.Since(startTime)
-	w.metricsClient.EmitHistogram("put_latency", "Latency of delete operation in milliseconds",
+	w.metricsClient.EmitHistogram("delete_latency", "Latency of delete operation in milliseconds",
 		float64(elapsedTime.Milliseconds()))
 	if err != nil {
-		w.metricsClient.EmitCounter("put_failure", "Number of delete failures", 1)
+		w.metricsClient.EmitCounter("delete_failure", "Number of delete failures", 1)
 	}
 
 	return err
