@@ -27,11 +27,12 @@ func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex 
 
 	// add worker meta
 	workerId, _ := utils.WorkerId(ctx)
-	workerMetas[workerId] = &WorkerMeta{
+	workerMeta := &WorkerMeta{
 		WorkerId:   workerId,
 		TopicIndex: consumerConfig.TopicIndex,
 		Alive:      true,
 	}
+	addWorkerMeta(workerMeta)
 
 	var workerErr error
 	defer func() {
@@ -44,8 +45,6 @@ func Work(ctx context.Context, consumerConfig *conf.ConsumerConfig, workerIndex 
 		}
 		close(errCh)
 		wg.Done()
-		workerMetas[workerId].Alive = false
-		metricsClient.EmitCounter("worker_num", "Number of workers", -1)
 		logs.Printf("ends")
 	}()
 	wg.Add(1)

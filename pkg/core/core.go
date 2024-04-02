@@ -33,7 +33,8 @@ var (
 
 	metricsClient *utils.MetricsClient
 
-	workerMetas map[string]*WorkerMeta
+	workerMetas  map[string]*WorkerMeta
+	workerMetaMu sync.RWMutex = sync.RWMutex{}
 
 	cronDone chan<- bool
 
@@ -280,4 +281,10 @@ func Exit() {
 	if transitionErr := transitToExited(); transitionErr != nil {
 		logs.Printf("transit to exited failed: %v", transitionErr)
 	}
+}
+
+func addWorkerMeta(wm *WorkerMeta) {
+	workerMetaMu.Lock()
+	defer workerMetaMu.Unlock()
+	workerMetas[wm.WorkerId] = wm
 }
