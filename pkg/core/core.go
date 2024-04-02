@@ -193,7 +193,7 @@ func Run() error {
 			return err
 		}
 		stateStoreWrapper := state.NewStateStoreWrapper(stateStore, metricsClient)
-		go cron.run(cronCtx, processorCallbacks.Join, stateStore)
+		go cron.run(cronCtx, processorCallbacks.Join, stateStoreWrapper)
 
 		for _, consumerConfig := range c.ConsumerConfigs {
 			for i := 0; i < consumerConfig.NumOfWorkers; i++ {
