@@ -206,7 +206,7 @@ func Run() error {
 				workerReadyChannel := make(chan struct{}, 1)
 				workerReadyChannels = append(workerReadyChannels, workerReadyChannel)
 
-				joinWorker := NewJoinWorker(w, stateStore, int(3*windowSize))
+				joinWorker := NewJoinWorker(w, stateStore, int(5*windowSize))
 				go Work(workerCtx, consumerConfig, i, joinWorker.JoinWorkerProcessCallback, workerErrorChannel, wg, workerNotifyChannel, workerReadyChannel)
 
 				metricsClient.EmitCounter("worker_num", "Number of workers", 1)

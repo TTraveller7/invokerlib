@@ -120,10 +120,12 @@ func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCal
 	leftKeySets, err := fetchKeySets(ctx, stateStore, leftBatchIds)
 	if err != nil {
 		logs.Printf("async join fetch key sets failed: %v", err)
+		return
 	}
 	rightKeySets, err := fetchKeySets(ctx, stateStore, rightBatchIds)
 	if err != nil {
 		logs.Printf("async join fetch key sets failed: %v", err)
+		return
 	}
 
 	// fetch records

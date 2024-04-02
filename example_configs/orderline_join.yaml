@@ -14,7 +14,7 @@ processorConfigs:
     - address: "kafka:9092"
       topic: "orderline_source"
     outputConfig: 
-      defaultTopicPartitions: 1
+      defaultTopicPartitions: 2
       outputKafkaConfigs:
       - name: "orderparse"
         address: "kafka:9092"
@@ -30,7 +30,7 @@ processorConfigs:
     name: "orderlinejoin"
     type: "join"
     windowSize: 10
-    numOfWorker: 1
+    numOfWorker: 2
     inputKafkaConfigs: 
     - address: "kafka:9092"
       topic: "orderparse"
