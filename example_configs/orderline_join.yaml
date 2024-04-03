@@ -29,7 +29,7 @@ processorConfigs:
     entryPoint: "OrderlineJoinHandler"
     name: "orderlinejoin"
     type: "join"
-    windowSize: 10
+    windowSize: 30
     numOfWorker: 2
     inputKafkaConfigs: 
     - address: "kafka:9092"

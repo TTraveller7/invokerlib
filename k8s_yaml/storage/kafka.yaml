@@ -48,7 +48,7 @@ spec:
       volumes:
         - name: volume-kafka
           emptyDir:
-            sizeLimit: 4Gi
+            sizeLimit: 8Gi
 ---
 
 

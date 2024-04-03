@@ -27,8 +27,8 @@ func (w *StateStoreWrapper) Get(ctx context.Context, key string) ([]byte, error)
 	res, err := w.s.Get(ctx, key)
 
 	elapsedTime := time.Since(startTime)
-	w.metricsClient.EmitHistogram("get_latency", "Latency of get operation in milliseconds",
-		float64(elapsedTime.Milliseconds()))
+	w.metricsClient.EmitHistogram("get_latency", "Latency of get operation in microseconds",
+		float64(elapsedTime.Microseconds()))
 	if err != nil {
 		if err == consts.ErrStateStoreKeyNotExist {
 			w.metricsClient.EmitCounter("get_cache_miss", "Number of cache misses", 1)
@@ -50,8 +50,8 @@ func (w *StateStoreWrapper) PutWithExpireTime(ctx context.Context, key string, v
 	err := w.s.PutWithExpireTime(ctx, key, val, expireSeconds)
 
 	elapsedTime := time.Since(startTime)
-	w.metricsClient.EmitHistogram("put_latency", "Latency of put operation in milliseconds",
-		float64(elapsedTime.Milliseconds()))
+	w.metricsClient.EmitHistogram("put_latency", "Latency of put operation in microseconds",
+		float64(elapsedTime.Microseconds()))
 	if err != nil {
 		w.metricsClient.EmitCounter("put_failure", "Number of put failures", 1)
 	}
@@ -65,8 +65,8 @@ func (w *StateStoreWrapper) Delete(ctx context.Context, key string) error {
 	err := w.s.Delete(ctx, key)
 
 	elapsedTime := time.Since(startTime)
-	w.metricsClient.EmitHistogram("delete_latency", "Latency of delete operation in milliseconds",
-		float64(elapsedTime.Milliseconds()))
+	w.metricsClient.EmitHistogram("delete_latency", "Latency of delete operation in microseconds",
+		float64(elapsedTime.Microseconds()))
 	if err != nil {
 		w.metricsClient.EmitCounter("delete_failure", "Number of delete failures", 1)
 	}
