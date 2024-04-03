@@ -20,7 +20,7 @@ const (
 	MimeTypeMultipartFormData = "multipart/form-data"
 )
 
-const CacheSize = 100 * 1024 * 1024
+const CacheSize = 500 * 1024 * 1024
 
 const MetricsNamespace = "invoker"
 
