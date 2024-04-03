@@ -37,12 +37,13 @@ func initProducers() error {
 	if c.DefaultOutputKafkaConfig != nil {
 		saramaProducer, err := sarama.NewSyncProducer([]string{c.DefaultOutputKafkaConfig.Address}, producerConfig)
 		if err != nil {
-			return fmt.Errorf("initialize producer failed: %v", err)
+			return fmt.Errorf("initialize default producer failed: %v", err)
 		}
 		dp = &Producer{
 			saramaProducer: saramaProducer,
 			topic:          c.DefaultOutputKafkaConfig.Topic,
 		}
+		addrToSaramaProducer[c.DefaultOutputKafkaConfig.Address] = saramaProducer
 	}
 
 	// create other producers
@@ -51,7 +52,7 @@ func initProducers() error {
 			// create sarama producer
 			saramaProducer, err := sarama.NewSyncProducer([]string{producerConf.Address}, producerConfig)
 			if err != nil {
-				return fmt.Errorf("initialize producer failed: %v", err)
+				return fmt.Errorf("initialize producer from output kafka config failed: %v", err)
 			}
 			addrToSaramaProducer[producerConf.Address] = saramaProducer
 		}

@@ -7,6 +7,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/TTraveller7/invokerlib/pkg/conf"
 	"github.com/TTraveller7/invokerlib/pkg/models"
+	"github.com/TTraveller7/invokerlib/pkg/utils"
 )
 
 func PassToDefaultOutputTopic(ctx context.Context, record *models.Record) error {
@@ -36,4 +37,11 @@ func PassToOutputTopic(ctx context.Context, name string, record *models.Record) 
 		Value: sarama.ByteEncoder(record.Value()),
 	})
 	return nil
+}
+
+func MetricsClient() *utils.MetricsClient {
+	if metricsClient == nil {
+		panic("metric client has not been created")
+	}
+	return metricsClient
 }

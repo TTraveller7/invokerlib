@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/TTraveller7/invokerlib/pkg/conf"
+	"github.com/TTraveller7/invokerlib/pkg/consts"
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
@@ -29,7 +30,9 @@ func NewMemcachedStateStore(name string) (StateStore, error) {
 func (m *MemcachedStateStore) Get(ctx context.Context, key string) ([]byte, error) {
 	base64Key := base64.StdEncoding.EncodeToString([]byte(key))
 	item, err := m.cli.Get(base64Key)
-	if err != nil {
+	if err == memcache.ErrCacheMiss {
+		return nil, consts.ErrStateStoreKeyNotExist
+	} else if err != nil {
 		return nil, fmt.Errorf("memcached state store Get failed: %v", err)
 	} else {
 		return item.Value, nil

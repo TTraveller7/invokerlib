@@ -1,0 +1,57 @@
+processorConfigs: 
+  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/orderline_join
+    files: 
+    - go.mod
+    - go.sum
+    - orderline_parse.go
+    - models.go
+    - utils.go
+    entryPoint: "OrderlineParseHandler"
+    name: "orderlineparse"
+    type: "process"
+    numOfWorker: 1
+    inputKafkaConfigs: 
+    - address: "kafka:9092"
+      topic: "orderline_source"
+    outputConfig: 
+      defaultTopicPartitions: 2
+      outputKafkaConfigs:
+      - name: "orderparse"
+        address: "kafka:9092"
+        topic: "orderparse"
+  - parentDirectory: /home/svt/go/src/github.com/ttraveller7/invokerlib-examples/orderline_join
+    files: 
+    - go.mod
+    - go.sum
+    - orderline_join.go
+    - models.go
+    - utils.go
+    entryPoint: "OrderlineJoinHandler"
+    name: "orderlinejoin"
+    type: "join"
+    windowSize: 30
+    numOfWorker: 2
+    inputKafkaConfigs: 
+    - address: "kafka:9092"
+      topic: "orderparse"
+    - address: "kafka:9092"
+      topic: "orderlineparse"
+    outputConfig: 
+      defaultTopicPartitions: 1
+
+globalKafkaConfig: 
+  address: "kafka:9092"
+  initialTopics:
+  - topic: "orderparse"
+    partitions: 3
+  - topic: "orderline_source"
+    partitions: 3
+
+globalStoreConfig:
+  redisConfigs:
+  - name: "state-redis"
+    address: "state-redis:6379"
+  memcachedConfigs:
+  - name: "state-memcached"
+    addresses: 
+    - "state-memcached:11211"

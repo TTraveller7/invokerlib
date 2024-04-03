@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/TTraveller7/invokerlib/pkg/logs"
+	"github.com/TTraveller7/invokerlib/pkg/consts"
 	"github.com/allegro/bigcache/v3"
 )
 
@@ -38,7 +38,6 @@ func NewBigCacheStateStore() (StateStore, error) {
 
 		// prints information about additional memory allocation
 		Verbose: true,
-		Logger:  logs.Logger(),
 	}
 
 	b, err := bigcache.New(context.Background(), config)
@@ -53,7 +52,9 @@ func NewBigCacheStateStore() (StateStore, error) {
 
 func (b *BigCacheStateStore) Get(ctx context.Context, key string) ([]byte, error) {
 	val, err := b.cli.Get(key)
-	if err != nil {
+	if err == bigcache.ErrEntryNotFound {
+		return nil, consts.ErrStateStoreKeyNotExist
+	} else if err != nil {
 		return nil, fmt.Errorf("big cache state store Get failed: %v", err)
 	}
 	return val, nil

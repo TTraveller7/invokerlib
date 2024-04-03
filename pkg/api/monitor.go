@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/TTraveller7/invokerlib/pkg/conf"
-	"github.com/TTraveller7/invokerlib/pkg/logs"
 	"github.com/TTraveller7/invokerlib/pkg/utils"
 )
 
@@ -49,6 +50,8 @@ var (
 	initialTopics     []*conf.InternalKafkaConfig   = make([]*conf.InternalKafkaConfig, 0)
 	interimTopics     []*conf.InternalKafkaConfig   = make([]*conf.InternalKafkaConfig, 0)
 	processorMetadata map[string]*ProcessorMetadata = make(map[string]*ProcessorMetadata, 0)
+
+	logs *log.Logger = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
 )
 
 func MonitorHandle(w http.ResponseWriter, r *http.Request) {
@@ -464,23 +467,38 @@ func load(req *InvokerRequest) (*InvokerResponse, error) {
 	}
 	defer producer.Close()
 
+	count := 0
+	startTime := time.Now()
+	batchSize := 10
 	for _, topic := range loadParams.Topics {
 		s := bufio.NewScanner(file)
-		var offset int64
-		var producerErr error
+		messages := make([]*sarama.ProducerMessage, 0, batchSize)
 		for s.Scan() {
 			msg := &sarama.ProducerMessage{
 				Topic: topic,
-				Value: sarama.ByteEncoder(s.Bytes()),
+				Value: sarama.StringEncoder(s.Text()),
 			}
-			_, offset, producerErr = producer.SendMessage(msg)
-			if producerErr != nil {
-				producerErr = fmt.Errorf("send message failed: %v", producerErr)
-				logs.Printf("%v", producerErr)
-				return nil, producerErr
+			messages = append(messages, msg)
+			if len(messages) == batchSize {
+				if err := producer.SendMessages(messages); err != nil {
+					logs.Printf("send messages failed: %v", err)
+					return nil, err
+				}
+				messages = make([]*sarama.ProducerMessage, 0, batchSize)
+				count += batchSize
+				if count%10000 == 0 {
+					logs.Printf("%v messages submitted. Elapsed time: %v", count, time.Since(startTime))
+				}
 			}
 		}
-		logs.Printf("produce finished: fileName=%s, topic=%s, final offset=%v", loadParams.Name, topic, offset)
+		if len(messages) > 0 {
+			if err := producer.SendMessages(messages); err != nil {
+				logs.Printf("send messages failed: %v", err)
+				return nil, err
+			}
+		}
+		count += len(messages)
+		logs.Printf("produce finished: fileName=%s, topic=%s, final count=%v", loadParams.Name, topic, count)
 	}
 
 	return successResponse(), nil
