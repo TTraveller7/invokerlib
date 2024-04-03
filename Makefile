@@ -1,6 +1,6 @@
 INSTALL_PATH=/opt/svt/bin/fctl
 
-all: cleanall applyk8s installredis installprom installgrafana build install
+all: cleanall applyk8s installmemcached installprom installgrafana build install
 
 cleanall: clean cleanfissionmonitor cleanfissionjoin cleanfissionenv cleank8s cleanprom cleangrafana cleanredis cleanmemcached
 

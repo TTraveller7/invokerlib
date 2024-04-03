@@ -187,9 +187,9 @@ func Run() error {
 		cronDone = cd
 		cronCtx := context.WithValue(processorCtx, consts.CTX_KEY_INVOKER_LIB_CRON, "cron")
 		cron := NewCron(1*time.Second, windowSize, w, cd)
-		stateStore, err := state.NewRedisStateStore("state-redis")
+		stateStore, err := state.NewMemcachedStateStore("state-memcached")
 		if err != nil {
-			logs.Printf("create redis state store failed: %v", err)
+			logs.Printf("create memcached state store failed: %v", err)
 			return err
 		}
 		stateStoreWrapper := state.NewStateStoreWrapper(stateStore, metricsClient)
