@@ -1,8 +1,8 @@
 INSTALL_PATH=/opt/svt/bin/fctl
 
-all: cleanall applyk8s installprom installgrafana build install
+all: cleanall applyk8s installredis installprom installgrafana build install
 
-cleanall: clean cleanfissionmonitor cleanfissionjoin cleanfissionenv cleank8s cleanprom cleangrafana
+cleanall: clean cleanfissionmonitor cleanfissionjoin cleanfissionenv cleank8s cleanprom cleangrafana cleanredis cleanmemcached
 
 clean:
 	mkdir -p target 
@@ -70,3 +70,19 @@ cleangrafana:
 
 installgrafana:
 	kubectl apply -f k8s_yaml/grafana/grafana.yaml
+
+# redis
+
+cleanredis:
+	kubectl delete -f k8s_yaml/state-redis-stack.yaml --ignore-not-found
+
+installredis:
+	kubectl apply -f k8s_yaml/state-redis-stack.yaml
+
+# memcached
+
+cleanmemcached:
+	kubectl delete -f k8s_yaml/state-memcached-stack.yaml --ignore-not-found
+
+installmemcached:
+	kubectl apply -f k8s_yaml/state-memcached-stack.yaml

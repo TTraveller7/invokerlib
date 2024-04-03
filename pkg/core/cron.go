@@ -70,6 +70,12 @@ func (c *Cron) run(ctx context.Context, joinCallback models.JoinCallback, stateS
 func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCallback, stateStore state.StateStore) {
 	asyncJoinPrefix := fmt.Sprintf("[async join at %v] ", watermark)
 	logs := log.New(os.Stdout, asyncJoinPrefix, log.LstdFlags|log.Lshortfile)
+	startTime := time.Now()
+	defer func() {
+		elapsedTime := time.Since(startTime).Milliseconds()
+		metricsClient.EmitHistogram("window_join_process_time", "Process time for joining records in a window",
+			float64(elapsedTime))
+	}()
 
 	leftBatchIds := make([]string, 0)
 	rightBatchIds := make([]string, 0)
@@ -147,6 +153,10 @@ func asyncJoin(ctx context.Context, watermark int64, joinCallback models.JoinCal
 			}
 		}
 	}
+	metricsClient.EmitCounter("window_join_left_record", "Number of left records in a window",
+		float64(len(leftKeySets)))
+	metricsClient.EmitCounter("window_join_right_record", "Number of right records in a window",
+		float64(len(rightKeySets)))
 }
 
 func fetchKeySets(ctx context.Context, stateStore state.StateStore, batchIds []string) ([]string, error) {
