@@ -2,7 +2,7 @@
 
 set -e
 
-readonly FCTL_URL='https://github.com/TTraveller7/invokerlib/releases/download/v0.5.28/fctl'
+readonly FCTL_URL='https://github.com/TTraveller7/invokerlib/releases/download/v0.6.0/fctl'
 readonly DEFAULT_INSTALL_PATH="/opt/$USER"
 
 # Step 1: Create directory
